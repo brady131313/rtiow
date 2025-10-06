@@ -1,31 +1,21 @@
-use std::fmt::Display;
+use std::io::Write;
 
-use crate::vec::Vec3;
+use crate::{interval::Interval, vec::Vec3};
 
-pub struct Color(Vec3);
+pub type Color = Vec3;
+
+pub const INTENSITY: Interval = Interval::new(0.000, 0.999);
 
 impl Color {
-    pub fn new(r: f64, g: f64, b: f64) -> Self {
-        Self(Vec3::new(r, g, b))
-    }
-}
+    pub fn write_color<W: Write>(&self, out: &mut W) -> std::io::Result<()> {
+        let r = self.x();
+        let g = self.y();
+        let b = self.z();
 
-impl From<Vec3> for Color {
-    fn from(value: Vec3) -> Self {
-        Self(value)
-    }
-}
+        let rbyte = (256.0 * INTENSITY.clamp(r)) as i32;
+        let gbyte = (256.0 * INTENSITY.clamp(g)) as i32;
+        let bbyte = (256.0 * INTENSITY.clamp(b)) as i32;
 
-impl Display for Color {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let r = self.0.x();
-        let g = self.0.y();
-        let b = self.0.z();
-
-        let rbyte = (255.999 * r) as i32;
-        let gbyte = (255.999 * g) as i32;
-        let bbyte = (255.999 * b) as i32;
-
-        write!(f, "{rbyte} {gbyte} {bbyte}")
+        writeln!(out, "{rbyte} {gbyte} {bbyte}")
     }
 }
