@@ -10,6 +10,12 @@ impl Color {
     }
 }
 
+impl From<Vec3> for Color {
+    fn from(value: Vec3) -> Self {
+        Self(value)
+    }
+}
+
 impl Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let r = self.0.x();

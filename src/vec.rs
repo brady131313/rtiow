@@ -5,7 +5,7 @@ use std::{
 
 pub type Point3 = Vec3;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Vec3(f64, f64, f64);
 
 impl Vec3 {
@@ -60,11 +60,35 @@ impl Neg for &Vec3 {
     }
 }
 
+impl Add for Vec3 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vec3::new(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2)
+    }
+}
+
 impl Add for &Vec3 {
     type Output = Vec3;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Vec3::new(self.0 + rhs.0, self.1 + rhs.1, self.1 + rhs.2)
+        Vec3::new(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2)
+    }
+}
+
+impl Add<Vec3> for &Vec3 {
+    type Output = Vec3;
+
+    fn add(self, rhs: Vec3) -> Self::Output {
+        Vec3::new(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2)
+    }
+}
+
+impl Sub for Vec3 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vec3::new(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
     }
 }
 
@@ -72,15 +96,39 @@ impl Sub for &Vec3 {
     type Output = Vec3;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Vec3::new(self.0 - rhs.0, self.1 - rhs.1, self.1 - rhs.2)
+        Vec3::new(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
     }
 }
 
-impl Mul for &Vec3 {
+impl Sub<Vec3> for &Vec3 {
     type Output = Vec3;
 
+    fn sub(self, rhs: Vec3) -> Self::Output {
+        Vec3::new(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
+    }
+}
+
+impl Sub<&Vec3> for Vec3 {
+    type Output = Self;
+
+    fn sub(self, rhs: &Vec3) -> Self::Output {
+        Vec3::new(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
+    }
+}
+
+impl Mul for Vec3 {
+    type Output = Self;
+
     fn mul(self, rhs: Self) -> Self::Output {
-        Vec3::new(self.0 * rhs.0, self.1 * rhs.1, self.1 * rhs.2)
+        Vec3::new(self.0 * rhs.0, self.1 * rhs.1, self.2 * rhs.2)
+    }
+}
+
+impl Mul<f64> for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vec3::new(self.0 * rhs, self.1 * rhs, self.2 * rhs)
     }
 }
 
@@ -92,6 +140,14 @@ impl Mul<f64> for &Vec3 {
     }
 }
 
+impl Mul<Vec3> for f64 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        rhs * self
+    }
+}
+
 impl Mul<&Vec3> for f64 {
     type Output = Vec3;
 
@@ -100,11 +156,19 @@ impl Mul<&Vec3> for f64 {
     }
 }
 
+impl Div<f64> for Vec3 {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        (1.0 / rhs) * self
+    }
+}
+
 impl Div<f64> for &Vec3 {
     type Output = Vec3;
 
     fn div(self, rhs: f64) -> Self::Output {
-        (1f64 / rhs) * self
+        (1.0 / rhs) * self
     }
 }
 
