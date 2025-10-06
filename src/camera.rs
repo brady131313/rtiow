@@ -13,7 +13,10 @@ use crate::{
 pub struct CameraBuilder {
     aspect_ratio: f64,
     image_width: i32,
+    /// Cound of random samples for each pixel
     samples_per_pixel: i32,
+    /// Max number of ray bounces into scene
+    max_depth: i32,
 }
 
 impl Default for CameraBuilder {
@@ -22,6 +25,7 @@ impl Default for CameraBuilder {
             aspect_ratio: 1.0,
             image_width: 100,
             samples_per_pixel: 10,
+            max_depth: 10,
         }
     }
 }
@@ -39,6 +43,11 @@ impl CameraBuilder {
 
     pub fn samples_per_pixel(mut self, samples_per_pixel: i32) -> Self {
         self.samples_per_pixel = samples_per_pixel;
+        self
+    }
+
+    pub fn max_depth(mut self, max_depth: i32) -> Self {
+        self.max_depth = max_depth;
         self
     }
 
@@ -76,6 +85,7 @@ impl CameraBuilder {
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
+            max_depth: self.max_depth,
         }
     }
 }
@@ -89,6 +99,7 @@ pub struct Camera {
     pixel00_loc: Point3,
     pixel_delta_u: Vec3,
     pixel_delta_v: Vec3,
+    max_depth: i32,
 }
 
 impl Camera {
@@ -110,19 +121,11 @@ impl Camera {
                 let mut pixel_color = Color::ZERO;
                 for _sample in 0..self.samples_per_pixel {
                     let r = self.get_ray(i, j);
-                    pixel_color += &self.ray_color(&r, world);
+                    pixel_color += &self.ray_color(&r, self.max_depth, world);
                 }
 
                 pixel_color *= self.pixel_samples_scale;
                 pixel_color.write_color(out)?;
-                // let pixel_center = &self.pixel00_loc
-                //     + (i as f64 * &self.pixel_delta_u)
-                //     + (j as f64 * &self.pixel_delta_v);
-                // let ray_direction = pixel_center - &self.center;
-
-                // let r = Ray::new(self.center.clone(), ray_direction);
-                // let pixel_color = self.ray_color(&r, world);
-                // pixel_color.write_color(out)?;
             }
         }
 
@@ -142,9 +145,16 @@ impl Camera {
         Ray::new(ray_origin.clone(), ray_direction)
     }
 
-    fn ray_color<H: Hittable>(&self, r: &Ray, world: &H) -> Color {
-        if let Some(rec) = world.hit(r, Interval::new(0.0, f64::INFINITY)) {
-            return 0.5 * (rec.normal + Color::new(1.0, 1.0, 1.0));
+    fn ray_color<H: Hittable>(&self, r: &Ray, depth: i32, world: &H) -> Color {
+        // If exceeded ray bounce limit, no more light is gathered
+        if depth <= 0 {
+            return Color::ZERO;
+        }
+
+        if let Some(rec) = world.hit(r, Interval::new(0.001, f64::INFINITY)) {
+            // let direction = Vec3::random_on_hemisphere(&rec.normal);
+            let direction = rec.normal + Vec3::random_unit_vector();
+            return 0.5 * self.ray_color(&Ray::new(rec.p, direction), depth - 1, world);
         }
 
         let unit_direction = r.direction().unit_vector();

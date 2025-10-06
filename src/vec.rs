@@ -3,6 +3,8 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub},
 };
 
+use rand::Rng;
+
 pub type Point3 = Vec3;
 
 #[derive(Debug, Clone)]
@@ -35,6 +37,39 @@ impl Vec3 {
         self.0 * self.0 + self.1 * self.1 + self.2 * self.2
     }
 
+    pub fn random() -> Self {
+        let mut rng = rand::rng();
+        Self::new(rng.random(), rng.random(), rng.random())
+    }
+
+    pub fn random_bounded(min: f64, max: f64) -> Self {
+        let mut rng = rand::rng();
+        Self::new(
+            rng.random_range(min..max),
+            rng.random_range(min..max),
+            rng.random_range(min..max),
+        )
+    }
+
+    pub fn random_unit_vector() -> Self {
+        loop {
+            let p = Self::random_bounded(-1.0, 1.0);
+            let lensq = p.length_squared();
+            if 1e-160 < lensq && lensq <= 1.0 {
+                return p / lensq.sqrt();
+            }
+        }
+    }
+
+    pub fn random_on_hemisphere(normal: &Vec3) -> Self {
+        let on_unit_sphere = Self::random_unit_vector();
+        if on_unit_sphere.dot(normal) > 0.0 {
+            on_unit_sphere
+        } else {
+            -on_unit_sphere
+        }
+    }
+
     pub fn dot(&self, rhs: &Self) -> f64 {
         self.0 * rhs.0 + self.1 * rhs.1 + self.2 * rhs.2
     }
@@ -49,6 +84,14 @@ impl Vec3 {
 
     pub fn unit_vector(&self) -> Self {
         self / self.length()
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Vec3::new(-self.0, -self.1, -self.2)
     }
 }
 
