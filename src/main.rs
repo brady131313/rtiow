@@ -2,7 +2,10 @@ use std::io::Write;
 
 use rtiow::{
     color::Color,
+    hittable::{Hittable, HittableList},
+    interval::Interval,
     ray::Ray,
+    sphere::Sphere,
     vec::{Point3, Vec3},
 };
 
@@ -12,6 +15,12 @@ fn main() {
 
     // Calculate image height, bounded below by 1
     let image_height = ((image_width as f64 / aspect_ratio) as i32).max(1);
+
+    // World
+    let mut world = HittableList::default();
+
+    world.add(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5));
+    world.add(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0));
 
     // Camera
     let focal_length = 1.0;
@@ -44,7 +53,7 @@ fn main() {
             let ray_direction = pixel_center - &camera_center;
 
             let r = Ray::new(camera_center.clone(), ray_direction);
-            let pixel_color = ray_color(&r);
+            let pixel_color = ray_color(&r, &world);
             println!("{pixel_color}");
         }
     }
@@ -52,19 +61,10 @@ fn main() {
     eprintln!("\rDone.                         ")
 }
 
-fn hit_sphere(center: &Point3, radius: f64, r: &Ray) -> bool {
-    let oc = center - r.origin();
-    let a = r.direction().dot(r.direction());
-    let b = -2.0 * r.direction().dot(&oc);
-    let c = oc.dot(&oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-
-    discriminant >= 0.0
-}
-
-fn ray_color(r: &Ray) -> Color {
-    if hit_sphere(&Point3::new(0.0, 0.0, 1.0), 0.5, r) {
-        return Color::new(1.0, 0.0, 0.0);
+fn ray_color<H: Hittable>(r: &Ray, world: &H) -> Color {
+    if let Some(rec) = world.hit(r, Interval::new(0.0, f64::INFINITY)) {
+        let raw_color = 0.5 * (rec.normal + Vec3::new(1.0, 1.0, 1.0));
+        return Color::from(raw_color);
     }
 
     let unit_direction = r.direction().unit_vector();
