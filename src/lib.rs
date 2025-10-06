@@ -1,5 +1,6 @@
 use core::f64;
 
+pub mod camera;
 pub mod color;
 pub mod hittable;
 pub mod interval;
