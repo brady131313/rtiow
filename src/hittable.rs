@@ -1,33 +1,32 @@
+use std::rc::Rc;
+
 use crate::{
     interval::Interval,
+    material::Material,
     ray::Ray,
     vec::{Point3, Vec3},
 };
 
-#[derive(Debug)]
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
+    pub mat: Rc<dyn Material>,
     pub t: f64,
     pub front_face: bool,
 }
 
 impl HitRecord {
-    pub fn new(p: Point3, normal: Vec3, t: f64) -> Self {
+    pub fn new(p: Point3, normal: Vec3, mat: Rc<dyn Material>, t: f64) -> Self {
         Self {
             p,
             normal,
+            mat,
             t,
             front_face: false,
         }
     }
 
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3) {
-        // debug_assert!(
-        //     outward_normal.length() - 1.0 < f64::EPSILON,
-        //     "outward_normal should be unit length"
-        // );
-
         // Ray is outside sphere. negative dot product implies
         // vectors are facing opposite directions and normal of
         // geometry should always be facing outward

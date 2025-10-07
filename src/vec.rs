@@ -37,6 +37,11 @@ impl Vec3 {
         self.0 * self.0 + self.1 * self.1 + self.2 * self.2
     }
 
+    pub fn near_zero(&self) -> bool {
+        let s = 1e-8;
+        (self.0.abs() < s) && (self.1.abs() < s) && (self.2.abs() < s)
+    }
+
     pub fn random() -> Self {
         let mut rng = rand::rng();
         Self::new(rng.random(), rng.random(), rng.random())
@@ -80,6 +85,10 @@ impl Vec3 {
             self.2 * rhs.0 - self.0 * rhs.2,
             self.0 * rhs.1 - self.1 * rhs.0,
         )
+    }
+
+    pub fn reflect(v: &Self, n: &Self) -> Self {
+        v - 2.0 * v.dot(n) * n
     }
 
     pub fn unit_vector(&self) -> Self {
