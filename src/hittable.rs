@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::{
     interval::Interval,
@@ -10,13 +10,13 @@ use crate::{
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
-    pub mat: Rc<dyn Material>,
+    pub mat: Arc<dyn Material>,
     pub t: f64,
     pub front_face: bool,
 }
 
 impl HitRecord {
-    pub fn new(p: Point3, normal: Vec3, mat: Rc<dyn Material>, t: f64) -> Self {
+    pub fn new(p: Point3, normal: Vec3, mat: Arc<dyn Material>, t: f64) -> Self {
         Self {
             p,
             normal,
@@ -45,12 +45,12 @@ pub trait Hittable {
 
 #[derive(Default)]
 pub struct HittableList {
-    objects: Vec<Box<dyn Hittable>>,
+    objects: Vec<Arc<dyn Hittable + Send + Sync>>,
 }
 
 impl HittableList {
-    pub fn add<H: Hittable + 'static>(&mut self, object: H) {
-        self.objects.push(Box::new(object));
+    pub fn add<H: Hittable + Send + Sync + 'static>(&mut self, object: Arc<H>) {
+        self.objects.push(object);
     }
 }
 

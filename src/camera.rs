@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use rand::Rng;
 
 use crate::{
@@ -107,29 +108,44 @@ impl Camera {
         CameraBuilder::default()
     }
 
-    pub fn render<H: Hittable, W: Write, E: Write>(
+    pub fn render<H: Hittable + Sync + Send, W: Write>(
         &self,
         world: &H,
         out: &mut W,
-        err_out: &mut E,
     ) -> std::io::Result<()> {
+        use rayon::prelude::*;
+
+        let pb = ProgressBar::new(self.image_height as u64);
+        pb.set_style(ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}")
+            .unwrap()
+    );
+
+        let pixels: Vec<_> = (0..self.image_height)
+            .into_par_iter()
+            .progress_with(pb.clone())
+            .flat_map_iter(|j| {
+                (0..self.image_width).into_iter().map(move |i| {
+                    let mut pixel_color = Color::ZERO;
+                    for _sample in 0..self.samples_per_pixel {
+                        let r = self.get_ray(i, j);
+                        pixel_color += &self.ray_color(&r, self.max_depth, world);
+                    }
+
+                    pixel_color * self.pixel_samples_scale
+                })
+            })
+            .collect();
+
         writeln!(out, "P3\n{} {}\n255", self.image_width, self.image_height)?;
-        for j in 0..self.image_height {
-            write!(err_out, "\rScanlines remaining: {} ", self.image_height - j)?;
 
-            for i in 0..self.image_width {
-                let mut pixel_color = Color::ZERO;
-                for _sample in 0..self.samples_per_pixel {
-                    let r = self.get_ray(i, j);
-                    pixel_color += &self.ray_color(&r, self.max_depth, world);
-                }
-
-                pixel_color *= self.pixel_samples_scale;
-                pixel_color.write_color(out)?;
-            }
+        for pixel in pixels {
+            pixel.write_color(out)?;
         }
 
-        writeln!(err_out, "\rDone.                         ")
+        pb.finish_with_message("Rendering complete");
+
+        Ok(())
     }
 
     /// Construct a camera ray originating from the origin and directed
