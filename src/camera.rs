@@ -5,6 +5,7 @@ use rand::Rng;
 
 use crate::{
     color::Color,
+    degrees_to_radians,
     hittable::Hittable,
     interval::Interval,
     ray::Ray,
@@ -18,6 +19,8 @@ pub struct CameraBuilder {
     samples_per_pixel: i32,
     /// Max number of ray bounces into scene
     max_depth: i32,
+    /// Vertical view angle (field of view)
+    vfov: f64,
 }
 
 impl Default for CameraBuilder {
@@ -27,6 +30,7 @@ impl Default for CameraBuilder {
             image_width: 100,
             samples_per_pixel: 10,
             max_depth: 10,
+            vfov: 90.0,
         }
     }
 }
@@ -52,6 +56,11 @@ impl CameraBuilder {
         self
     }
 
+    pub fn vfov(mut self, vfov: f64) -> Self {
+        self.vfov = vfov;
+        self
+    }
+
     pub fn build(self) -> Camera {
         // Calculate image height, bounded below by 1
         let image_height = ((self.image_width as f64 / self.aspect_ratio) as i32).max(1);
@@ -59,7 +68,9 @@ impl CameraBuilder {
         let pixel_samples_scale = 1.0 / self.samples_per_pixel as f64;
 
         let focal_length = 1.0;
-        let viewport_height = 2.0;
+        let theta = degrees_to_radians(self.vfov);
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h * focal_length;
         // Don't use aspect_ratio because we need real valued aspect ratio
         let viewport_width = viewport_height * (self.image_width as f64 / image_height as f64);
         let center = Point3::ZERO;
@@ -125,7 +136,7 @@ impl Camera {
             .into_par_iter()
             .progress_with(pb.clone())
             .flat_map_iter(|j| {
-                (0..self.image_width).into_iter().map(move |i| {
+                (0..self.image_width).map(move |i| {
                     let mut pixel_color = Color::ZERO;
                     for _sample in 0..self.samples_per_pixel {
                         let r = self.get_ray(i, j);

@@ -1,0 +1,67 @@
+{
+  "materials": {
+    "ground": {
+      "Lambertian": {
+        "albedo": [0.8, 0.8, 0.0]
+      }
+    },
+    "center": {
+      "Lambertian": {
+        "albedo": [0.1, 0.2, 0.5]
+      }
+    },
+    "left": {
+      "Dielectric": {
+        "refraction_index": 1.5
+      }
+    },
+    "bubble": {
+      "Dielectric": {
+        "refraction_index": 0.66666666666667
+      }
+    },
+    "right": {
+      "Metal": {
+        "albedo": [0.8, 0.6, 0.2],
+        "fuzz": 1.0
+      }
+    }
+  },
+  "scene": [
+    {
+      "Circle": {
+        "radius": 100.0,
+        "center": [0.0, -100.5, -1.0],
+        "material": "ground"
+      }
+    },
+    {
+      "Circle": {
+        "radius": 0.5,
+        "center": [0.0, 0.0, -1.2],
+        "material": "center"
+      }
+    },
+    {
+      "Circle": {
+        "radius": 0.5,
+        "center": [-1.0, 0.0, -1.0],
+        "material": "left"
+      }
+    },
+    {
+      "Circle": {
+        "radius": 0.4,
+        "center": [-1.0, 0.0, -1.0],
+        "material": "bubble"
+      }
+    },
+    {
+      "Circle": {
+        "radius": 0.5,
+        "center": [1.0, 0.0, -1.0],
+        "material": "right"
+      }
+    }
+  ]
+}
