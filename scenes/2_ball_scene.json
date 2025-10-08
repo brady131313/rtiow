@@ -1,0 +1,30 @@
+{
+  "materials": {
+    "left": {
+      "Lambertian": {
+        "albedo": [0, 0, 1]
+      }
+    },
+    "right": {
+      "Lambertian": {
+        "albedo": [1, 0, 0]
+      }
+    }
+  },
+  "scene": [
+    {
+      "Circle": {
+        "radius": 0.99990605,
+        "center": [-0.99990605, 0.0, -1],
+        "material": "left"
+      }
+    },
+    {
+      "Circle": {
+        "radius": 0.99990605,
+        "center": [0.99990605, 0.0, -1.0],
+        "material": "right"
+      }
+    }
+  ]
+}

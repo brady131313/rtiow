@@ -1,6 +1,7 @@
 use std::{
     fmt::Display,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub},
+    str::FromStr,
 };
 
 use rand::Rng;
@@ -73,6 +74,21 @@ impl Vec3 {
             on_unit_sphere
         } else {
             -on_unit_sphere
+        }
+    }
+
+    pub fn random_in_unit_disk() -> Self {
+        let mut rng = rand::rng();
+        loop {
+            let p = Vec3::new(
+                rng.random_range(-1.0..1.0),
+                rng.random_range(-1.0..1.0),
+                0.0,
+            );
+
+            if p.length_squared() < 1.0 {
+                return p;
+            }
         }
     }
 
@@ -257,5 +273,29 @@ impl DivAssign<f64> for Vec3 {
 impl Display for Vec3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {} {}", self.x(), self.y(), self.z())
+    }
+}
+
+impl FromStr for Vec3 {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut coords = s.split(",");
+        let x: f64 = coords
+            .next()
+            .ok_or(anyhow::format_err!("expected x value"))?
+            .parse()?;
+
+        let y: f64 = coords
+            .next()
+            .ok_or(anyhow::format_err!("expected y value"))?
+            .parse()?;
+
+        let z: f64 = coords
+            .next()
+            .ok_or(anyhow::format_err!("expected z value"))?
+            .parse()?;
+
+        Ok(Self::new(x, y, z))
     }
 }
