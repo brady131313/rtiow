@@ -6,7 +6,7 @@ use rand::Rng;
 use crate::{
     color::Color,
     degrees_to_radians,
-    hittable::Hittable,
+    hittable::{Hittable, HittableList},
     interval::Interval,
     ray::Ray,
     vec::{Point3, Vec3},
@@ -179,11 +179,7 @@ impl Camera {
         CameraBuilder::default()
     }
 
-    pub fn render<H: Hittable + Sync + Send, W: Write>(
-        &self,
-        world: &H,
-        out: &mut W,
-    ) -> std::io::Result<()> {
+    pub fn render<W: Write>(&self, world: &HittableList, out: &mut W) -> std::io::Result<()> {
         use rayon::prelude::*;
 
         let pb = ProgressBar::new(self.image_height as u64);
@@ -234,10 +230,12 @@ impl Camera {
         };
 
         let ray_direction = pixel_sample - &ray_origin;
-        Ray::new(ray_origin, ray_direction)
+        let ray_time = rand::random();
+
+        Ray::new_with_time(ray_origin, ray_direction, ray_time)
     }
 
-    fn ray_color<H: Hittable>(&self, r: &Ray, depth: i32, world: &H) -> Color {
+    fn ray_color(&self, r: &Ray, depth: i32, world: &HittableList) -> Color {
         // If exceeded ray bounce limit, no more light is gathered
         if depth <= 0 {
             return Color::ZERO;

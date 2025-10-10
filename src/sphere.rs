@@ -1,32 +1,39 @@
 use std::sync::Arc;
 
 use crate::{
-    hittable::{HitRecord, Hittable},
+    hittable::HitRecord,
     interval::Interval,
     material::Material,
     ray::Ray,
-    vec::Point3,
+    vec::{Point3, Vec3},
 };
 
 pub struct Sphere {
-    center: Point3,
-    radius: f64,
-    mat: Arc<dyn Material + Send + Sync>,
+    pub center: Ray,
+    pub radius: f64,
+    pub mat: Arc<Material>,
 }
 
 impl Sphere {
-    pub fn new(center: Point3, radius: f64, mat: Arc<dyn Material + Send + Sync>) -> Self {
+    pub fn new(static_center: Point3, radius: f64, mat: Arc<Material>) -> Self {
         Self {
-            center,
+            center: Ray::new(static_center, Vec3::ZERO),
             radius: radius.max(0.0),
             mat,
         }
     }
-}
 
-impl Hittable for Sphere {
-    fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
-        let oc = &self.center - r.origin();
+    pub fn new_moving(center_1: Point3, center_2: Point3, radius: f64, mat: Arc<Material>) -> Self {
+        Self {
+            center: Ray::new(center_1.clone(), center_2 - center_1),
+            radius: radius.max(0.0),
+            mat,
+        }
+    }
+
+    pub fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
+        let current_center = self.center.at(r.time());
+        let oc = &current_center - r.origin();
         let a = r.direction().length_squared();
         let h = r.direction().dot(&oc);
         let c = oc.length_squared() - self.radius * self.radius;
@@ -49,7 +56,7 @@ impl Hittable for Sphere {
 
         let t = root;
         let p = r.at(t);
-        let outward_normal = (&p - &self.center) / self.radius;
+        let outward_normal = (&p - &current_center) / self.radius;
         let mut rec = HitRecord::new(p, outward_normal.clone(), self.mat.clone(), t);
         rec.set_face_normal(r, &outward_normal);
 

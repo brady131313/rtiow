@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 pub type Point3 = Vec3;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Vec3(f64, f64, f64);
 
 impl Vec3 {

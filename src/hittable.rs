@@ -4,19 +4,20 @@ use crate::{
     interval::Interval,
     material::Material,
     ray::Ray,
+    sphere::Sphere,
     vec::{Point3, Vec3},
 };
 
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
-    pub mat: Arc<dyn Material>,
+    pub mat: Arc<Material>,
     pub t: f64,
     pub front_face: bool,
 }
 
 impl HitRecord {
-    pub fn new(p: Point3, normal: Vec3, mat: Arc<dyn Material>, t: f64) -> Self {
+    pub fn new(p: Point3, normal: Vec3, mat: Arc<Material>, t: f64) -> Self {
         Self {
             p,
             normal,
@@ -39,23 +40,29 @@ impl HitRecord {
     }
 }
 
-pub trait Hittable {
-    fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord>;
+pub enum Hittable {
+    Sphere(Sphere),
+}
+
+impl Hittable {
+    pub fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
+        match self {
+            Self::Sphere(sphere) => sphere.hit(r, ray_t),
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct HittableList {
-    objects: Vec<Arc<dyn Hittable + Send + Sync>>,
+    objects: Vec<Arc<Hittable>>,
 }
 
 impl HittableList {
-    pub fn add<H: Hittable + Send + Sync + 'static>(&mut self, object: Arc<H>) {
+    pub fn add(&mut self, object: Arc<Hittable>) {
         self.objects.push(object);
     }
-}
 
-impl Hittable for HittableList {
-    fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
+    pub fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let mut hit_anything = None;
         let mut closest_so_far = ray_t.max;
 
@@ -67,5 +74,9 @@ impl Hittable for HittableList {
         }
 
         hit_anything
+    }
+
+    pub fn objects(&self) -> &[Arc<Hittable>] {
+        &self.objects
     }
 }

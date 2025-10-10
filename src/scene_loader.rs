@@ -4,8 +4,8 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    hittable::HittableList,
-    material::{Dielectric, Lambertian, Material, Metal},
+    hittable::{Hittable, HittableList},
+    material::{Material, MaterialKind},
     sphere::Sphere,
     vec::Point3,
 };
@@ -27,27 +27,34 @@ impl Shapes {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Materials {
-    Lambertian(Lambertian),
-    Metal(Metal),
-    Dielectric(Dielectric),
-}
-
-impl Materials {
-    pub fn into_dyn(self) -> Arc<dyn Material + Send + Sync> {
-        match self {
-            Self::Lambertian(lambertian) => Arc::new(lambertian),
-            Self::Metal(metal) => Arc::new(metal),
-            Self::Dielectric(dielectric) => Arc::new(dielectric),
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize)]
-struct SceneFile {
-    materials: HashMap<String, Materials>,
+pub struct SceneFile {
+    materials: HashMap<String, MaterialKind>,
     scene: Vec<Shapes>,
+}
+
+impl From<HittableList> for SceneFile {
+    fn from(value: HittableList) -> Self {
+        let mut materials = HashMap::new();
+        let mut scene = Vec::new();
+
+        // for obj in value.objects() {
+        //     match obj.as_ref() {
+        //         Hittable::Sphere(sphere) => {
+        //             // comment
+        //             materials.insert(sphere.mat.name().to_owned(), sphere.mat.kind().clone());
+        //             scene.push(Shapes::Circle {
+        //                 radius: sphere.radius,
+        //                 center: sphere.center.clone(),
+        //                 material: sphere.mat.name().to_owned(),
+        //             });
+        //         }
+        //     }
+        // }
+        todo!();
+
+        Self { materials, scene }
+    }
 }
 
 pub fn load_scene<P: AsRef<Path>>(path: P) -> anyhow::Result<HittableList> {
@@ -59,7 +66,7 @@ pub fn load_scene<P: AsRef<Path>>(path: P) -> anyhow::Result<HittableList> {
 
     let mut materials = HashMap::new();
     for (name, material) in scene_file.materials {
-        materials.insert(name, material.into_dyn());
+        materials.insert(name.clone(), Arc::new(Material::new(name, material)));
     }
 
     let mut world = HittableList::default();
@@ -69,7 +76,9 @@ pub fn load_scene<P: AsRef<Path>>(path: P) -> anyhow::Result<HittableList> {
         };
 
         let shape = match raw_shape {
-            Shapes::Circle { radius, center, .. } => Sphere::new(center, radius, material.clone()),
+            Shapes::Circle { radius, center, .. } => {
+                Hittable::Sphere(Sphere::new(center, radius, material.clone()))
+            }
         };
 
         world.add(Arc::new(shape));

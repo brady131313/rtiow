@@ -7,11 +7,51 @@ pub struct ScatterRecord {
     pub scattered: Ray,
 }
 
-pub trait Material {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord>;
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct Material {
+    name: String,
+    kind: MaterialKind,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl Material {
+    pub fn new(name: impl Into<String>, kind: impl Into<MaterialKind>) -> Self {
+        Self {
+            name: name.into(),
+            kind: kind.into(),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn kind(&self) -> &MaterialKind {
+        &self.kind
+    }
+
+    pub fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        match &self.kind {
+            MaterialKind::Lambertian(lambertian) => lambertian.scatter(r_in, rec),
+            MaterialKind::Metal(metal) => metal.scatter(r_in, rec),
+            MaterialKind::Dielectric(dielectric) => dielectric.scatter(r_in, rec),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum MaterialKind {
+    Lambertian(Lambertian),
+    Metal(Metal),
+    Dielectric(Dielectric),
+}
+
+impl From<Lambertian> for MaterialKind {
+    fn from(value: Lambertian) -> Self {
+        Self::Lambertian(value)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Lambertian {
     albedo: Color,
 }
@@ -20,10 +60,8 @@ impl Lambertian {
     pub fn new(albedo: Color) -> Self {
         Self { albedo }
     }
-}
 
-impl Material for Lambertian {
-    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let mut scatter_direction = &rec.normal + Vec3::random_unit_vector();
 
         // Catch degenerate scatter direction
@@ -33,15 +71,21 @@ impl Material for Lambertian {
 
         Some(ScatterRecord {
             attenuation: self.albedo.clone(),
-            scattered: Ray::new(rec.p.clone(), scatter_direction),
+            scattered: Ray::new_with_time(rec.p.clone(), scatter_direction, r_in.time()),
         })
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Metal {
     albedo: Color,
     fuzz: f64,
+}
+
+impl From<Metal> for MaterialKind {
+    fn from(value: Metal) -> Self {
+        Self::Metal(value)
+    }
 }
 
 impl Metal {
@@ -51,14 +95,12 @@ impl Metal {
             fuzz: fuzz.min(1.0),
         }
     }
-}
 
-impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let mut reflected = Vec3::reflect(r_in.direction(), &rec.normal);
         reflected = reflected.unit_vector() + (self.fuzz * Vec3::random_unit_vector());
 
-        let scattered = Ray::new(rec.p.clone(), reflected);
+        let scattered = Ray::new_with_time(rec.p.clone(), reflected, r_in.time());
         if scattered.direction().dot(&rec.normal) > 0.0 {
             Some(ScatterRecord {
                 attenuation: self.albedo.clone(),
@@ -70,11 +112,17 @@ impl Material for Metal {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Dielectric {
     /// Refractive index in vacuum or air, or the ratio of the material's refractive index
     /// over the refractive index of the enclosing media
     refraction_index: f64,
+}
+
+impl From<Dielectric> for MaterialKind {
+    fn from(value: Dielectric) -> Self {
+        Self::Dielectric(value)
+    }
 }
 
 impl Dielectric {
@@ -88,9 +136,7 @@ impl Dielectric {
         r0 = r0 * r0;
         r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
     }
-}
 
-impl Material for Dielectric {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let attenuation = Color::new(1.0, 1.0, 1.0);
         let ri = if rec.front_face {
@@ -110,7 +156,7 @@ impl Material for Dielectric {
             Vec3::refract(&unit_direction, &rec.normal, ri)
         };
 
-        let scattered = Ray::new(rec.p.clone(), direction);
+        let scattered = Ray::new_with_time(rec.p.clone(), direction, r_in.time());
         Some(ScatterRecord {
             attenuation,
             scattered,
