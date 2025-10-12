@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    aabb::AABB,
     hittable::HitRecord,
     interval::Interval,
     material::Material,
@@ -9,25 +10,41 @@ use crate::{
 };
 
 pub struct Sphere {
-    pub center: Ray,
-    pub radius: f64,
-    pub mat: Arc<Material>,
+    center: Ray,
+    radius: f64,
+    mat: Arc<Material>,
+    bbox: AABB,
 }
 
 impl Sphere {
     pub fn new(static_center: Point3, radius: f64, mat: Arc<Material>) -> Self {
+        let radius = radius.max(0.0);
+
+        let rvec = Vec3::new(radius, radius, radius);
+        let bbox = AABB::from_points(&static_center - &rvec, &static_center + &rvec);
+
         Self {
             center: Ray::new(static_center, Vec3::ZERO),
-            radius: radius.max(0.0),
+            radius,
             mat,
+            bbox,
         }
     }
 
     pub fn new_moving(center_1: Point3, center_2: Point3, radius: f64, mat: Arc<Material>) -> Self {
+        let radius = radius.max(0.0);
+        let center = Ray::new(center_1.clone(), center_2 - center_1);
+
+        let rvec = Vec3::new(radius, radius, radius);
+        let box1 = AABB::from_points(center.at(0.0) - &rvec, &center.at(0.0) + &rvec);
+        let box2 = AABB::from_points(center.at(1.0) - &rvec, center.at(1.0) + rvec);
+        let bbox = AABB::from_boxes(&box1, &box2);
+
         Self {
-            center: Ray::new(center_1.clone(), center_2 - center_1),
-            radius: radius.max(0.0),
+            center,
+            radius,
             mat,
+            bbox,
         }
     }
 
@@ -61,5 +78,9 @@ impl Sphere {
         rec.set_face_normal(r, &outward_normal);
 
         Some(rec)
+    }
+
+    pub fn bounding_box(&self) -> &AABB {
+        &self.bbox
     }
 }

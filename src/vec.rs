@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub},
+    ops::{Add, AddAssign, Div, DivAssign, Index, Mul, MulAssign, Neg, Sub},
     str::FromStr,
 };
 
@@ -297,5 +297,30 @@ impl FromStr for Vec3 {
             .parse()?;
 
         Ok(Self::new(x, y, z))
+    }
+}
+
+impl Index<Axis> for Vec3 {
+    type Output = f64;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        match index {
+            Axis::X => &self.0,
+            Axis::Y => &self.1,
+            Axis::Z => &self.2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+impl Axis {
+    pub const fn iter() -> [Axis; 3] {
+        [Axis::X, Axis::Y, Axis::Z]
     }
 }

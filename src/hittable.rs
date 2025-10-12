@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    aabb::AABB,
     interval::Interval,
     material::Material,
     ray::Ray,
@@ -50,15 +51,23 @@ impl Hittable {
             Self::Sphere(sphere) => sphere.hit(r, ray_t),
         }
     }
+
+    pub fn bounding_box(&self) -> &AABB {
+        match self {
+            Self::Sphere(sphere) => sphere.bounding_box(),
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct HittableList {
     objects: Vec<Arc<Hittable>>,
+    bbox: AABB,
 }
 
 impl HittableList {
     pub fn add(&mut self, object: Arc<Hittable>) {
+        self.bbox = AABB::from_boxes(&self.bbox, object.bounding_box());
         self.objects.push(object);
     }
 
@@ -78,5 +87,9 @@ impl HittableList {
 
     pub fn objects(&self) -> &[Arc<Hittable>] {
         &self.objects
+    }
+
+    pub fn bounding_box(&self) -> &AABB {
+        &self.bbox
     }
 }
