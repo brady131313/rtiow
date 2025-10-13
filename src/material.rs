@@ -1,66 +1,47 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
-use crate::{color::Color, hittable::HitRecord, ray::Ray, vec::Vec3};
+use crate::{
+    color::Color,
+    hittable::HitRecord,
+    ray::Ray,
+    scene_loader::{MaterialSpec, ResourceRegistry},
+    texture::{DynTexture, SolidColor},
+    vec::Vec3,
+};
 
 pub struct ScatterRecord {
     pub attenuation: Color,
     pub scattered: Ray,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct Material {
-    name: String,
-    kind: MaterialKind,
+pub type DynMaterial = dyn Material + Send + Sync;
+
+pub trait Material {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord>;
+
+    fn to_spec(&self, registry: &mut ResourceRegistry) -> MaterialSpec;
+
+    fn name(&self) -> &str;
 }
 
-impl Material {
-    pub fn new(name: impl Into<String>, kind: impl Into<MaterialKind>) -> Self {
-        Self {
-            name: name.into(),
-            kind: kind.into(),
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn kind(&self) -> &MaterialKind {
-        &self.kind
-    }
-
-    pub fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
-        match &self.kind {
-            MaterialKind::Lambertian(lambertian) => lambertian.scatter(r_in, rec),
-            MaterialKind::Metal(metal) => metal.scatter(r_in, rec),
-            MaterialKind::Dielectric(dielectric) => dielectric.scatter(r_in, rec),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum MaterialKind {
-    Lambertian(Lambertian),
-    Metal(Metal),
-    Dielectric(Dielectric),
-}
-
-impl From<Lambertian> for MaterialKind {
-    fn from(value: Lambertian) -> Self {
-        Self::Lambertian(value)
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone)]
 pub struct Lambertian {
-    albedo: Color,
+    tex: Arc<DynTexture>,
 }
 
 impl Lambertian {
-    pub fn new(albedo: Color) -> Self {
-        Self { albedo }
+    pub fn new(name: impl Into<String>, albedo: Color) -> Self {
+        Self::from_texture(Arc::new(SolidColor::new(name, albedo)))
     }
 
+    pub fn from_texture(texture: Arc<DynTexture>) -> Self {
+        Self { tex: texture }
+    }
+}
+
+impl Material for Lambertian {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let mut scatter_direction = &rec.normal + Vec3::random_unit_vector();
 
@@ -70,32 +51,43 @@ impl Lambertian {
         }
 
         Some(ScatterRecord {
-            attenuation: self.albedo.clone(),
+            attenuation: self.tex.value(rec.u, rec.v, &rec.p),
             scattered: Ray::new_with_time(rec.p.clone(), scatter_direction, r_in.time()),
         })
+    }
+
+    fn to_spec(&self, registry: &mut ResourceRegistry) -> MaterialSpec {
+        let tex = self.tex.to_spec(registry);
+        registry.register_texture(self.tex.name().to_owned(), tex);
+
+        MaterialSpec::Lambertian {
+            texture: self.tex.name().to_owned(),
+        }
+    }
+
+    fn name(&self) -> &str {
+        self.tex.name()
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Metal {
+    name: String,
     albedo: Color,
     fuzz: f64,
 }
 
-impl From<Metal> for MaterialKind {
-    fn from(value: Metal) -> Self {
-        Self::Metal(value)
-    }
-}
-
 impl Metal {
-    pub fn new(albedo: Color, fuzz: f64) -> Self {
+    pub fn new(name: impl Into<String>, albedo: Color, fuzz: f64) -> Self {
         Self {
+            name: name.into(),
             albedo,
             fuzz: fuzz.min(1.0),
         }
     }
+}
 
+impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let mut reflected = Vec3::reflect(r_in.direction(), &rec.normal);
         reflected = reflected.unit_vector() + (self.fuzz * Vec3::random_unit_vector());
@@ -110,24 +102,33 @@ impl Metal {
             None
         }
     }
+
+    fn to_spec(&self, _registry: &mut ResourceRegistry) -> MaterialSpec {
+        MaterialSpec::Metal {
+            albedo: self.albedo.clone(),
+            fuzz: self.fuzz,
+        }
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Dielectric {
+    name: String,
     /// Refractive index in vacuum or air, or the ratio of the material's refractive index
     /// over the refractive index of the enclosing media
     refraction_index: f64,
 }
 
-impl From<Dielectric> for MaterialKind {
-    fn from(value: Dielectric) -> Self {
-        Self::Dielectric(value)
-    }
-}
-
 impl Dielectric {
-    pub fn new(refraction_index: f64) -> Self {
-        Self { refraction_index }
+    pub fn new(name: impl Into<String>, refraction_index: f64) -> Self {
+        Self {
+            name: name.into(),
+            refraction_index,
+        }
     }
 
     /// Use Schlick's approximation for reflectance
@@ -136,7 +137,9 @@ impl Dielectric {
         r0 = r0 * r0;
         r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
     }
+}
 
+impl Material for Dielectric {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let attenuation = Color::new(1.0, 1.0, 1.0);
         let ri = if rec.front_face {
@@ -161,5 +164,15 @@ impl Dielectric {
             attenuation,
             scattered,
         })
+    }
+
+    fn to_spec(&self, _registry: &mut ResourceRegistry) -> MaterialSpec {
+        MaterialSpec::Dielectric {
+            refraction_index: self.refraction_index,
+        }
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }

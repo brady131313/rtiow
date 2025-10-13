@@ -2,22 +2,23 @@ use std::sync::Arc;
 
 use crate::{
     aabb::AABB,
-    hittable::HitRecord,
+    hittable::{HitRecord, Hittable},
     interval::Interval,
-    material::Material,
+    material::DynMaterial,
     ray::Ray,
+    scene_loader::{ResourceRegistry, ShapeSpec},
     vec::{Point3, Vec3},
 };
 
 pub struct Sphere {
     center: Ray,
     radius: f64,
-    mat: Arc<Material>,
+    mat: Arc<DynMaterial>,
     bbox: AABB,
 }
 
 impl Sphere {
-    pub fn new(static_center: Point3, radius: f64, mat: Arc<Material>) -> Self {
+    pub fn new(static_center: Point3, radius: f64, mat: Arc<DynMaterial>) -> Self {
         let radius = radius.max(0.0);
 
         let rvec = Vec3::new(radius, radius, radius);
@@ -31,7 +32,12 @@ impl Sphere {
         }
     }
 
-    pub fn new_moving(center_1: Point3, center_2: Point3, radius: f64, mat: Arc<Material>) -> Self {
+    pub fn new_moving(
+        center_1: Point3,
+        center_2: Point3,
+        radius: f64,
+        mat: Arc<DynMaterial>,
+    ) -> Self {
         let radius = radius.max(0.0);
         let center = Ray::new(center_1.clone(), center_2 - center_1);
 
@@ -47,8 +53,10 @@ impl Sphere {
             bbox,
         }
     }
+}
 
-    pub fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
+impl Hittable for Sphere {
+    fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let current_center = self.center.at(r.time());
         let oc = &current_center - r.origin();
         let a = r.direction().length_squared();
@@ -80,7 +88,18 @@ impl Sphere {
         Some(rec)
     }
 
-    pub fn bounding_box(&self) -> &AABB {
+    fn bounding_box(&self) -> &AABB {
         &self.bbox
+    }
+
+    fn to_spec(&self, registry: &mut ResourceRegistry) -> ShapeSpec {
+        let material_spec = self.mat.to_spec(registry);
+        registry.register_material(self.mat.name().to_owned(), material_spec);
+
+        ShapeSpec::Circle {
+            radius: self.radius,
+            center: self.center.clone(),
+            material: self.mat.name().to_owned(),
+        }
     }
 }

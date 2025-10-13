@@ -4,7 +4,10 @@ use std::{
     str::FromStr,
 };
 
-use rand::Rng;
+use rand::{
+    Rng,
+    distr::{Distribution, StandardUniform},
+};
 use serde::{Deserialize, Serialize};
 
 pub type Point3 = Vec3;
@@ -322,5 +325,17 @@ pub enum Axis {
 impl Axis {
     pub const fn iter() -> [Axis; 3] {
         [Axis::X, Axis::Y, Axis::Z]
+    }
+}
+
+impl Distribution<Axis> for StandardUniform {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Axis {
+        let i = rng.random_range(0..=2);
+        match i {
+            0 => Axis::X,
+            1 => Axis::Y,
+            2 => Axis::Z,
+            _ => unreachable!(),
+        }
     }
 }

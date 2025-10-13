@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::vec::{Point3, Vec3};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ray {
     orig: Point3,
     dir: Vec3,

@@ -12,7 +12,11 @@ pub struct AABB {
 }
 
 impl AABB {
-    pub fn new(x: Interval, y: Interval, z: Interval) -> Self {
+    pub const EMPTY: Self = Self::new(Interval::EMPTY, Interval::EMPTY, Interval::EMPTY);
+    pub const UNIVERSE: Self =
+        Self::new(Interval::UNIVERSE, Interval::UNIVERSE, Interval::UNIVERSE);
+
+    pub const fn new(x: Interval, y: Interval, z: Interval) -> Self {
         Self { x, y, z }
     }
 
@@ -55,11 +59,9 @@ impl AABB {
         }
     }
 
-    pub fn hit(&self, r: &Ray) -> Option<Interval> {
+    pub fn hit(&self, r: &Ray, mut ray_t: Interval) -> bool {
         let ray_orig = r.origin();
         let ray_dir = r.direction();
-
-        let mut ray_t = Interval::default();
 
         for axis in Axis::iter() {
             let ax = self.axis_interval(axis);
@@ -85,10 +87,26 @@ impl AABB {
             }
 
             if ray_t.max <= ray_t.min {
-                return None;
+                return false;
             }
         }
 
-        Some(ray_t)
+        true
+    }
+
+    pub fn longest_axis(&self) -> Axis {
+        if self.x.size() > self.y.size() {
+            if self.x.size() > self.z.size() {
+                Axis::X
+            } else {
+                Axis::Z
+            }
+        } else {
+            if self.y.size() > self.z.size() {
+                Axis::Y
+            } else {
+                Axis::Z
+            }
+        }
     }
 }

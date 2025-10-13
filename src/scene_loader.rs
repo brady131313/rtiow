@@ -4,56 +4,151 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    hittable::{Hittable, HittableList},
-    material::{Material, MaterialKind},
+    bvh::BVHNode,
+    color::Color,
+    hittable::{DynHittable, HittableList},
+    material::{Dielectric, DynMaterial, Lambertian, Metal},
+    ray::Ray,
     sphere::Sphere,
-    vec::Point3,
+    texture::{CheckerTexture, DynTexture, SolidColor},
 };
 
+type MaterialKey = String;
+type TextureKey = String;
+
 #[derive(Debug, Serialize, Deserialize)]
-pub enum Shapes {
+pub enum ShapeSpec {
     Circle {
         radius: f64,
-        center: Point3,
-        material: String,
+        center: Ray,
+        material: MaterialKey,
+    },
+    List(Vec<ShapeSpec>),
+    BVH {
+        left: Box<ShapeSpec>,
+        right: Box<ShapeSpec>,
     },
 }
 
-impl Shapes {
-    pub fn material(&self) -> &str {
+impl ShapeSpec {
+    fn build(self, materials: &HashMap<String, Arc<DynMaterial>>) -> Arc<DynHittable> {
         match self {
-            Self::Circle { material, .. } => material,
+            Self::Circle {
+                radius,
+                center,
+                material,
+            } => {
+                let material = materials[&material].clone();
+                Arc::new(Sphere::new_moving(
+                    center.origin().clone(),
+                    center.origin() + center.direction(),
+                    radius,
+                    material,
+                ))
+            }
+            Self::List(shape_specs) => {
+                let mut world = HittableList::default();
+                for spec in shape_specs {
+                    world.add(spec.build(materials));
+                }
+
+                Arc::new(world)
+            }
+            Self::BVH { left, right } => {
+                let left = left.build(materials);
+                let right = right.build(materials);
+
+                Arc::new(BVHNode::from_slice(&mut [left, right]))
+            }
         }
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TextureSpec {
+    SolidColor {
+        albedo: Color,
+    },
+    Checker {
+        scale: f64,
+        even: TextureKey,
+        odd: TextureKey,
+    },
+}
+
+impl TextureSpec {
+    fn build(self, name: &str, textures: &HashMap<String, Arc<DynTexture>>) -> Arc<DynTexture> {
+        match self {
+            Self::SolidColor { albedo } => Arc::new(SolidColor::new(name, albedo)),
+            Self::Checker { scale, even, odd } => {
+                let even = textures[&even].clone();
+                let odd = textures[&odd].clone();
+                Arc::new(CheckerTexture::new(scale, even, odd))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum MaterialSpec {
+    Lambertian { texture: TextureKey },
+    Metal { albedo: Color, fuzz: f64 },
+    Dielectric { refraction_index: f64 },
+}
+
+impl MaterialSpec {
+    fn build(self, name: &str, textures: &HashMap<String, Arc<DynTexture>>) -> Arc<DynMaterial> {
+        match self {
+            Self::Lambertian { texture } => {
+                let texture = textures[&texture].clone();
+                Arc::new(Lambertian::from_texture(texture))
+            }
+            Self::Metal { albedo, fuzz } => Arc::new(Metal::new(name, albedo, fuzz)),
+            Self::Dielectric { refraction_index } => {
+                Arc::new(Dielectric::new(name, refraction_index))
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ResourceRegistry {
+    materials: Vec<(String, MaterialSpec)>,
+    textures: Vec<(String, TextureSpec)>,
+}
+
+impl ResourceRegistry {
+    pub fn register_material(&mut self, name: String, spec: MaterialSpec) {
+        self.materials.push((name, spec));
+    }
+
+    pub fn register_texture(&mut self, name: String, spec: TextureSpec) {
+        self.textures.push((name, spec));
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SceneFile {
-    materials: HashMap<String, MaterialKind>,
-    scene: Vec<Shapes>,
+    textures: Vec<(String, TextureSpec)>,
+    materials: Vec<(String, MaterialSpec)>,
+    shapes: Vec<ShapeSpec>,
 }
 
 impl From<HittableList> for SceneFile {
     fn from(value: HittableList) -> Self {
-        let mut materials = HashMap::new();
-        let mut scene = Vec::new();
+        let mut registry = ResourceRegistry::default();
+        let mut shapes = Vec::new();
 
-        // for obj in value.objects() {
-        //     match obj.as_ref() {
-        //         Hittable::Sphere(sphere) => {
-        //             // comment
-        //             materials.insert(sphere.mat.name().to_owned(), sphere.mat.kind().clone());
-        //             scene.push(Shapes::Circle {
-        //                 radius: sphere.radius,
-        //                 center: sphere.center.clone(),
-        //                 material: sphere.mat.name().to_owned(),
-        //             });
-        //         }
-        //     }
-        // }
-        todo!();
+        for obj in value.objects() {
+            let shape_spec = obj.to_spec(&mut registry);
+            shapes.push(shape_spec);
+        }
 
-        Self { materials, scene }
+        Self {
+            materials: registry.materials,
+            textures: registry.textures,
+            shapes,
+        }
     }
 }
 
@@ -64,24 +159,22 @@ pub fn load_scene<P: AsRef<Path>>(path: P) -> anyhow::Result<HittableList> {
     let scene_file: SceneFile =
         serde_json::from_reader(reader).context("Failed to load scene file")?;
 
-    let mut materials = HashMap::new();
-    for (name, material) in scene_file.materials {
-        materials.insert(name.clone(), Arc::new(Material::new(name, material)));
+    let mut textures: HashMap<String, Arc<DynTexture>> = HashMap::new();
+    for (name, spec) in scene_file.textures {
+        let texture = spec.build(&name, &textures);
+        textures.insert(name, texture);
+    }
+
+    let mut materials: HashMap<String, Arc<DynMaterial>> = HashMap::new();
+    for (name, spec) in scene_file.materials {
+        let material = spec.build(&name, &textures);
+        materials.insert(name, material);
     }
 
     let mut world = HittableList::default();
-    for raw_shape in scene_file.scene {
-        let Some(material) = materials.get(raw_shape.material()) else {
-            anyhow::bail!("unknown material name: {}", raw_shape.material())
-        };
-
-        let shape = match raw_shape {
-            Shapes::Circle { radius, center, .. } => {
-                Hittable::Sphere(Sphere::new(center, radius, material.clone()))
-            }
-        };
-
-        world.add(Arc::new(shape));
+    for shape_spec in scene_file.shapes {
+        let hittable = shape_spec.build(&materials);
+        world.add(hittable);
     }
 
     Ok(world)
