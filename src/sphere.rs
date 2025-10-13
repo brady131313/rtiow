@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{f64, sync::Arc};
 
 use crate::{
     aabb::AABB,
@@ -53,6 +53,22 @@ impl Sphere {
             bbox,
         }
     }
+
+    /// p: a given point on the sphere of radius one, centered at the origin
+    /// u: returned value [0, 1] of angle around the Y axis from X=-1
+    /// v: returned value [0, 1] of angle from Y=-1 to Y=+1
+    ///
+    ///     <1 0 0> yields <0.5 0.5>   <-1 0 0> yields <0.0 0.5>
+    ///     <0 1 0> yields <0.5 1.0>   <0 -1 0> yields <0.5 0.0>
+    ///     <0 0 1> yields <0.25 0.5>  <0 0 -1> yields <0.75 0.5>
+    fn get_sphere_uv(p: &Point3) -> (f64, f64) {
+        let theta = f64::acos(-p.y());
+        let phi = f64::atan2(-p.z(), p.x()) + f64::consts::PI;
+
+        let u = phi / (2.0 * f64::consts::PI);
+        let v = theta / f64::consts::PI;
+        (u, v)
+    }
 }
 
 impl Hittable for Sphere {
@@ -84,6 +100,10 @@ impl Hittable for Sphere {
         let outward_normal = (&p - &current_center) / self.radius;
         let mut rec = HitRecord::new(p, outward_normal.clone(), self.mat.clone(), t);
         rec.set_face_normal(r, &outward_normal);
+
+        let (u, v) = Self::get_sphere_uv(&outward_normal);
+        rec.u = u;
+        rec.v = v;
 
         Some(rec)
     }

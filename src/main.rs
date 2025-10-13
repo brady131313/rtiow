@@ -9,7 +9,7 @@ use rtiow::{
     material::{Dielectric, Lambertian, Metal},
     scene_loader::{SceneFile, load_scene},
     sphere::Sphere,
-    texture::CheckerTexture,
+    texture::{CheckerTexture, ImageTexture},
     vec::{Point3, Vec3},
 };
 
@@ -103,6 +103,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         SubCommand::Dump(args) => {
             let world = match args.scene.as_str() {
                 "cover" => Ok(book_cover()),
+                "checkered_spheres" => Ok(checkered_spheres()),
+                "earth" => earth(),
                 _ => Err(anyhow::anyhow!("invalid scene id: '{}'", args.scene)),
             }?;
 
@@ -197,4 +199,39 @@ fn book_cover() -> HittableList {
     let mut bvh_world = HittableList::default();
     bvh_world.add(Arc::new(BVHNode::new(world)));
     bvh_world
+}
+
+fn checkered_spheres() -> HittableList {
+    let mut world = HittableList::default();
+
+    let checker = Arc::new(CheckerTexture::from_color(
+        "checker",
+        0.32,
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9),
+    ));
+
+    world.add(Arc::new(Sphere::new(
+        Point3::new(0.0, -10.0, 0.0),
+        10.0,
+        Arc::new(Lambertian::from_texture(checker.clone())),
+    )));
+    world.add(Arc::new(Sphere::new(
+        Point3::new(0.0, 10.0, 0.0),
+        10.0,
+        Arc::new(Lambertian::from_texture(checker.clone())),
+    )));
+
+    world
+}
+
+fn earth() -> anyhow::Result<HittableList> {
+    let earth_texture = Arc::new(ImageTexture::new("textures/earthmap.jpg")?);
+    let earth_surface = Arc::new(Lambertian::from_texture(earth_texture));
+    let globe = Arc::new(Sphere::new(Point3::new(0.0, 0.0, 0.0), 2.0, earth_surface));
+
+    let mut world = HittableList::default();
+    world.add(globe);
+
+    Ok(world)
 }

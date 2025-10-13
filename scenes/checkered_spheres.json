@@ -1,0 +1,88 @@
+{
+  "textures": [
+    [
+      "checker_checker_even",
+      {
+        "SolidColor": {
+          "albedo": [
+            0.2,
+            0.3,
+            0.1
+          ]
+        }
+      }
+    ],
+    [
+      "checker_checker_odd",
+      {
+        "SolidColor": {
+          "albedo": [
+            0.9,
+            0.9,
+            0.9
+          ]
+        }
+      }
+    ],
+    [
+      "checker",
+      {
+        "Checker": {
+          "scale": 0.32,
+          "even": "checker_checker_even",
+          "odd": "checker_checker_odd"
+        }
+      }
+    ]
+  ],
+  "materials": [
+    [
+      "checker",
+      {
+        "Lambertian": {
+          "texture": "checker"
+        }
+      }
+    ]
+  ],
+  "shapes": [
+    {
+      "Circle": {
+        "radius": 10.0,
+        "center": {
+          "orig": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tm": 0.0
+        },
+        "material": "checker"
+      }
+    },
+    {
+      "Circle": {
+        "radius": 10.0,
+        "center": {
+          "orig": [
+            0.0,
+            10.0,
+            0.0
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tm": 0.0
+        },
+        "material": "checker"
+      }
+    }
+  ]
+}

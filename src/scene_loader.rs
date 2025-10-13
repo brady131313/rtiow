@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fs::File, io::BufReader, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
@@ -10,7 +16,7 @@ use crate::{
     material::{Dielectric, DynMaterial, Lambertian, Metal},
     ray::Ray,
     sphere::Sphere,
-    texture::{CheckerTexture, DynTexture, SolidColor},
+    texture::{CheckerTexture, DynTexture, ImageTexture, SolidColor},
 };
 
 type MaterialKey = String;
@@ -74,17 +80,25 @@ pub enum TextureSpec {
         even: TextureKey,
         odd: TextureKey,
     },
+    Image {
+        path: PathBuf,
+    },
 }
 
 impl TextureSpec {
-    fn build(self, name: &str, textures: &HashMap<String, Arc<DynTexture>>) -> Arc<DynTexture> {
+    fn build(
+        self,
+        name: &str,
+        textures: &HashMap<String, Arc<DynTexture>>,
+    ) -> anyhow::Result<Arc<DynTexture>> {
         match self {
-            Self::SolidColor { albedo } => Arc::new(SolidColor::new(name, albedo)),
+            Self::SolidColor { albedo } => Ok(Arc::new(SolidColor::new(name, albedo))),
             Self::Checker { scale, even, odd } => {
                 let even = textures[&even].clone();
                 let odd = textures[&odd].clone();
-                Arc::new(CheckerTexture::new(scale, even, odd))
+                Ok(Arc::new(CheckerTexture::new(scale, even, odd)))
             }
+            Self::Image { path } => Ok(Arc::new(ImageTexture::new(&path)?)),
         }
     }
 }
@@ -119,10 +133,18 @@ pub struct ResourceRegistry {
 
 impl ResourceRegistry {
     pub fn register_material(&mut self, name: String, spec: MaterialSpec) {
+        if self.materials.iter().find(|(n, _)| &name == n).is_some() {
+            return;
+        }
+
         self.materials.push((name, spec));
     }
 
     pub fn register_texture(&mut self, name: String, spec: TextureSpec) {
+        if self.textures.iter().find(|(n, _)| &name == n).is_some() {
+            return;
+        }
+
         self.textures.push((name, spec));
     }
 }
@@ -161,7 +183,7 @@ pub fn load_scene<P: AsRef<Path>>(path: P) -> anyhow::Result<HittableList> {
 
     let mut textures: HashMap<String, Arc<DynTexture>> = HashMap::new();
     for (name, spec) in scene_file.textures {
-        let texture = spec.build(&name, &textures);
+        let texture = spec.build(&name, &textures)?;
         textures.insert(name, texture);
     }
 

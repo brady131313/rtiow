@@ -1,7 +1,12 @@
-use std::sync::Arc;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use crate::{
     color::Color,
+    image::RtwImage,
+    interval::Interval,
     scene_loader::{ResourceRegistry, TextureSpec},
     vec::Point3,
 };
@@ -105,6 +110,57 @@ impl Texture for CheckerTexture {
             scale: 1.0 / self.inv_scale,
             even: self.even.name().to_owned(),
             odd: self.odd.name().to_owned(),
+        }
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+pub struct ImageTexture {
+    name: String,
+    path: PathBuf,
+    image: RtwImage,
+}
+
+impl ImageTexture {
+    pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let path = path.as_ref().to_owned();
+        let name = format!("image_{path:?}");
+
+        let image = RtwImage::new(&path)?;
+
+        Ok(Self { path, name, image })
+    }
+}
+
+impl Texture for ImageTexture {
+    fn value(&self, mut u: f64, mut v: f64, _p: &Point3) -> Color {
+        // no texture data, return cyan to debug
+        if self.image.height() <= 0 {
+            return Color::new(0.0, 1.0, 1.0);
+        }
+
+        // Clamp input texture coordinates to [0,1] x [1,0]
+        u = Interval::new(0.0, 1.0).clamp(u);
+        v = 1.0 - Interval::new(0.0, 1.0).clamp(v); // Flip V to image coordinates
+
+        let i = (u * self.image.width() as f64) as u32;
+        let j = (v * self.image.height() as f64) as u32;
+        let pixel = self.image.get_pixel(i, j);
+
+        let color_scale = 1.0 / 255.0;
+        return Color::new(
+            color_scale * pixel.0 as f64,
+            color_scale * pixel.1 as f64,
+            color_scale * pixel.2 as f64,
+        );
+    }
+
+    fn to_spec(&self, _registry: &mut ResourceRegistry) -> TextureSpec {
+        TextureSpec::Image {
+            path: self.path.clone(),
         }
     }
 
