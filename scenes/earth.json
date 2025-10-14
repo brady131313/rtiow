@@ -4,7 +4,7 @@
       "image_\"textures/earthmap.jpg\"",
       {
         "Image": {
-          "path": "textures/spongebob.jpg"
+          "path": "textures/earthmap.jpg"
         }
       }
     ]
@@ -24,8 +24,16 @@
       "Circle": {
         "radius": 2.0,
         "center": {
-          "orig": [0.0, 0.0, 0.0],
-          "dir": [0.0, 0.0, 0.0],
+          "orig": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dir": [
+            0.0,
+            0.0,
+            0.0
+          ],
           "tm": 0.0
         },
         "material": "image_\"textures/earthmap.jpg\""

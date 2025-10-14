@@ -8,6 +8,7 @@ pub mod hittable;
 pub mod image;
 pub mod interval;
 pub mod material;
+pub mod perlin;
 pub mod ray;
 pub mod scene_loader;
 pub mod sphere;

@@ -1,0 +1,46 @@
+{
+  "textures": [
+    [
+      "perlin_default",
+      {
+        "Perlin": {
+          "scale": 4
+        }
+      }
+    ]
+  ],
+  "materials": [
+    [
+      "perlin_default",
+      {
+        "Lambertian": {
+          "texture": "perlin_default"
+        }
+      }
+    ]
+  ],
+  "shapes": [
+    {
+      "Circle": {
+        "radius": 1000.0,
+        "center": {
+          "orig": [0.0, -1000.0, 0.0],
+          "dir": [0.0, 0.0, 0.0],
+          "tm": 0.0
+        },
+        "material": "perlin_default"
+      }
+    },
+    {
+      "Circle": {
+        "radius": 2.0,
+        "center": {
+          "orig": [0.0, 2.0, 0.0],
+          "dir": [0.0, 0.0, 0.0],
+          "tm": 0.0
+        },
+        "material": "perlin_default"
+      }
+    }
+  ]
+}

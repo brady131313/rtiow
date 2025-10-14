@@ -7,6 +7,7 @@ use crate::{
     color::Color,
     image::RtwImage,
     interval::Interval,
+    perlin::Perlin,
     scene_loader::{ResourceRegistry, TextureSpec},
     vec::Point3,
 };
@@ -137,11 +138,6 @@ impl ImageTexture {
 
 impl Texture for ImageTexture {
     fn value(&self, mut u: f64, mut v: f64, _p: &Point3) -> Color {
-        // no texture data, return cyan to debug
-        if self.image.height() <= 0 {
-            return Color::new(0.0, 1.0, 1.0);
-        }
-
         // Clamp input texture coordinates to [0,1] x [1,0]
         u = Interval::new(0.0, 1.0).clamp(u);
         v = 1.0 - Interval::new(0.0, 1.0).clamp(v); // Flip V to image coordinates
@@ -151,11 +147,11 @@ impl Texture for ImageTexture {
         let pixel = self.image.get_pixel(i, j);
 
         let color_scale = 1.0 / 255.0;
-        return Color::new(
+        Color::new(
             color_scale * pixel.0 as f64,
             color_scale * pixel.1 as f64,
             color_scale * pixel.2 as f64,
-        );
+        )
     }
 
     fn to_spec(&self, _registry: &mut ResourceRegistry) -> TextureSpec {
@@ -166,5 +162,34 @@ impl Texture for ImageTexture {
 
     fn name(&self) -> &str {
         &self.name
+    }
+}
+
+pub struct NoiseTexture {
+    noise: Perlin,
+    scale: f64,
+}
+
+impl NoiseTexture {
+    pub fn new(scale: f64) -> Self {
+        Self {
+            scale,
+            noise: Perlin::default(),
+        }
+    }
+}
+
+impl Texture for NoiseTexture {
+    fn value(&self, _u: f64, _v: f64, p: &Point3) -> Color {
+        Color::new(0.5, 0.5, 0.5)
+            * (1.0 + f64::sin(self.scale * p.z() + 10.0 * self.noise.turb(p, 7)))
+    }
+
+    fn to_spec(&self, _registry: &mut ResourceRegistry) -> TextureSpec {
+        TextureSpec::Perlin { scale: self.scale }
+    }
+
+    fn name(&self) -> &str {
+        "perlin_default"
     }
 }

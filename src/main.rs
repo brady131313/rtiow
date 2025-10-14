@@ -9,7 +9,7 @@ use rtiow::{
     material::{Dielectric, Lambertian, Metal},
     scene_loader::{SceneFile, load_scene},
     sphere::Sphere,
-    texture::{CheckerTexture, ImageTexture},
+    texture::{CheckerTexture, ImageTexture, NoiseTexture},
     vec::{Point3, Vec3},
 };
 
@@ -105,6 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "cover" => Ok(book_cover()),
                 "checkered_spheres" => Ok(checkered_spheres()),
                 "earth" => earth(),
+                "perlin_spheres" => Ok(perlin_spheres()),
                 _ => Err(anyhow::anyhow!("invalid scene id: '{}'", args.scene)),
             }?;
 
@@ -234,4 +235,23 @@ fn earth() -> anyhow::Result<HittableList> {
     world.add(globe);
 
     Ok(world)
+}
+
+fn perlin_spheres() -> HittableList {
+    let pertext = Arc::new(NoiseTexture::new(4.0));
+    let pertext_mat = Arc::new(Lambertian::from_texture(pertext));
+    let mut world = HittableList::default();
+
+    world.add(Arc::new(Sphere::new(
+        Point3::new(0.0, -1000.0, 0.0),
+        1000.0,
+        pertext_mat.clone(),
+    )));
+    world.add(Arc::new(Sphere::new(
+        Point3::new(0.0, 2.0, 0.0),
+        2.0,
+        pertext_mat.clone(),
+    )));
+
+    world
 }

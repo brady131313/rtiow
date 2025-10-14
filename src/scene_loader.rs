@@ -16,7 +16,7 @@ use crate::{
     material::{Dielectric, DynMaterial, Lambertian, Metal},
     ray::Ray,
     sphere::Sphere,
-    texture::{CheckerTexture, DynTexture, ImageTexture, SolidColor},
+    texture::{CheckerTexture, DynTexture, ImageTexture, NoiseTexture, SolidColor},
 };
 
 type MaterialKey = String;
@@ -83,6 +83,9 @@ pub enum TextureSpec {
     Image {
         path: PathBuf,
     },
+    Perlin {
+        scale: f64,
+    },
 }
 
 impl TextureSpec {
@@ -99,6 +102,7 @@ impl TextureSpec {
                 Ok(Arc::new(CheckerTexture::new(scale, even, odd)))
             }
             Self::Image { path } => Ok(Arc::new(ImageTexture::new(&path)?)),
+            Self::Perlin { scale } => Ok(Arc::new(NoiseTexture::new(scale))),
         }
     }
 }
@@ -133,7 +137,7 @@ pub struct ResourceRegistry {
 
 impl ResourceRegistry {
     pub fn register_material(&mut self, name: String, spec: MaterialSpec) {
-        if self.materials.iter().find(|(n, _)| &name == n).is_some() {
+        if self.materials.iter().any(|(n, _)| &name == n) {
             return;
         }
 
@@ -141,7 +145,7 @@ impl ResourceRegistry {
     }
 
     pub fn register_texture(&mut self, name: String, spec: TextureSpec) {
-        if self.textures.iter().find(|(n, _)| &name == n).is_some() {
+        if self.textures.iter().any(|(n, _)| &name == n) {
             return;
         }
 
