@@ -1647,7 +1647,9 @@ dependencies = [
  "eframe",
  "egui_extras",
  "env_logger",
+ "log",
  "ray_tracer",
+ "serde_json",
 ]
 
 [[package]]

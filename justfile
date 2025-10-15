@@ -7,7 +7,7 @@ dump SCENE:
         {{SCENE}} > scenes/{{SCENE}}.json
 
 gui:
-    cargo run --bin gui
+    cargo run --release --bin gui
 
 render_cover:
     cargo run --release --bin cli -- render \
