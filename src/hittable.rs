@@ -1,5 +1,9 @@
 use std::sync::Arc;
 
+pub mod bvh;
+pub mod quad;
+pub mod sphere;
+
 use crate::{
     aabb::AABB,
     interval::Interval,

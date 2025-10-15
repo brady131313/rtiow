@@ -17,30 +17,24 @@ impl AABB {
         Self::new(Interval::UNIVERSE, Interval::UNIVERSE, Interval::UNIVERSE);
 
     pub const fn new(x: Interval, y: Interval, z: Interval) -> Self {
-        Self { x, y, z }
+        Self {
+            x: pad_to_minimums(x),
+            y: pad_to_minimums(y),
+            z: pad_to_minimums(z),
+        }
     }
 
     /// Treat the two points a and b as extrema for the bounding box
     pub fn from_points(a: Point3, b: Point3) -> Self {
-        let x = if a.x() <= b.x() {
-            Interval::new(a.x(), b.x())
-        } else {
-            Interval::new(b.x(), a.x())
-        };
+        let x = Interval::new(a.x().min(b.x()), a.x().max(b.x()));
+        let y = Interval::new(a.y().min(b.y()), a.y().max(b.y()));
+        let z = Interval::new(a.z().min(b.z()), a.z().max(b.z()));
 
-        let y = if a.y() <= b.y() {
-            Interval::new(a.y(), b.y())
-        } else {
-            Interval::new(b.y(), a.y())
-        };
-
-        let z = if a.z() <= b.z() {
-            Interval::new(a.z(), b.z())
-        } else {
-            Interval::new(b.z(), a.z())
-        };
-
-        Self { x, y, z }
+        Self {
+            x: pad_to_minimums(x),
+            y: pad_to_minimums(y),
+            z: pad_to_minimums(z),
+        }
     }
 
     pub fn from_boxes(box0: &AABB, box1: &AABB) -> Self {
@@ -106,5 +100,14 @@ impl AABB {
         } else {
             Axis::Z
         }
+    }
+}
+
+const fn pad_to_minimums(interval: Interval) -> Interval {
+    let delta = 0.0001;
+    if interval.size() < delta {
+        interval.expand(delta)
+    } else {
+        interval
     }
 }

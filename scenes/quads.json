@@ -1,0 +1,208 @@
+{
+  "textures": [
+    [
+      "left_red",
+      {
+        "SolidColor": {
+          "albedo": [
+            1.0,
+            0.2,
+            0.2
+          ]
+        }
+      }
+    ],
+    [
+      "back_green",
+      {
+        "SolidColor": {
+          "albedo": [
+            0.2,
+            1.0,
+            0.2
+          ]
+        }
+      }
+    ],
+    [
+      "right_blue",
+      {
+        "SolidColor": {
+          "albedo": [
+            0.2,
+            0.2,
+            1.0
+          ]
+        }
+      }
+    ],
+    [
+      "upper_orange",
+      {
+        "SolidColor": {
+          "albedo": [
+            1.0,
+            0.5,
+            0.0
+          ]
+        }
+      }
+    ],
+    [
+      "lower_teal",
+      {
+        "SolidColor": {
+          "albedo": [
+            0.2,
+            0.8,
+            0.8
+          ]
+        }
+      }
+    ]
+  ],
+  "materials": [
+    [
+      "left_red",
+      {
+        "Lambertian": {
+          "texture": "left_red"
+        }
+      }
+    ],
+    [
+      "back_green",
+      {
+        "Lambertian": {
+          "texture": "back_green"
+        }
+      }
+    ],
+    [
+      "right_blue",
+      {
+        "Lambertian": {
+          "texture": "right_blue"
+        }
+      }
+    ],
+    [
+      "upper_orange",
+      {
+        "Lambertian": {
+          "texture": "upper_orange"
+        }
+      }
+    ],
+    [
+      "lower_teal",
+      {
+        "Lambertian": {
+          "texture": "lower_teal"
+        }
+      }
+    ]
+  ],
+  "shapes": [
+    {
+      "Quad": {
+        "q": [
+          -3.0,
+          -2.0,
+          5.0
+        ],
+        "u": [
+          0.0,
+          0.0,
+          -4.0
+        ],
+        "v": [
+          0.0,
+          4.0,
+          0.0
+        ],
+        "material": "left_red"
+      }
+    },
+    {
+      "Quad": {
+        "q": [
+          -2.0,
+          -2.0,
+          0.0
+        ],
+        "u": [
+          4.0,
+          0.0,
+          0.0
+        ],
+        "v": [
+          0.0,
+          4.0,
+          0.0
+        ],
+        "material": "back_green"
+      }
+    },
+    {
+      "Quad": {
+        "q": [
+          3.0,
+          -2.0,
+          1.0
+        ],
+        "u": [
+          0.0,
+          0.0,
+          4.0
+        ],
+        "v": [
+          0.0,
+          4.0,
+          0.0
+        ],
+        "material": "right_blue"
+      }
+    },
+    {
+      "Quad": {
+        "q": [
+          -2.0,
+          3.0,
+          1.0
+        ],
+        "u": [
+          4.0,
+          0.0,
+          0.0
+        ],
+        "v": [
+          0.0,
+          0.0,
+          4.0
+        ],
+        "material": "upper_orange"
+      }
+    },
+    {
+      "Quad": {
+        "q": [
+          -2.0,
+          -3.0,
+          5.0
+        ],
+        "u": [
+          4.0,
+          0.0,
+          0.0
+        ],
+        "v": [
+          0.0,
+          0.0,
+          -4.0
+        ],
+        "material": "lower_teal"
+      }
+    }
+  ]
+}

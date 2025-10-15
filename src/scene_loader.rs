@@ -10,13 +10,12 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    bvh::BVHNode,
     color::Color,
-    hittable::{DynHittable, HittableList},
+    hittable::{DynHittable, HittableList, bvh::BVHNode, quad::Quad, sphere::Sphere},
     material::{Dielectric, DynMaterial, Lambertian, Metal},
     ray::Ray,
-    sphere::Sphere,
     texture::{CheckerTexture, DynTexture, ImageTexture, NoiseTexture, SolidColor},
+    vec::{Point3, Vec3},
 };
 
 type MaterialKey = String;
@@ -27,6 +26,12 @@ pub enum ShapeSpec {
     Circle {
         radius: f64,
         center: Ray,
+        material: MaterialKey,
+    },
+    Quad {
+        q: Point3,
+        u: Vec3,
+        v: Vec3,
         material: MaterialKey,
     },
     List(Vec<ShapeSpec>),
@@ -51,6 +56,10 @@ impl ShapeSpec {
                     radius,
                     material,
                 ))
+            }
+            Self::Quad { q, u, v, material } => {
+                let material = materials[&material].clone();
+                Arc::new(Quad::new(q, u, v, material))
             }
             Self::List(shape_specs) => {
                 let mut world = HittableList::default();

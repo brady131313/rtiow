@@ -1,7 +1,6 @@
 use core::f64;
 
 pub mod aabb;
-pub mod bvh;
 pub mod camera;
 pub mod color;
 pub mod hittable;
@@ -11,7 +10,6 @@ pub mod material;
 pub mod perlin;
 pub mod ray;
 pub mod scene_loader;
-pub mod sphere;
 pub mod texture;
 pub mod vec;
 

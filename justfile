@@ -37,3 +37,17 @@ render_perlin:
         --vfov 20 \
         --defocus-angle 0 \
         ./scenes/perlin_spheres.json > image.ppm
+
+
+render_quads:
+    cargo run --release -- render \
+        -w 768 \
+        -r 1.0 \
+        -s 100 \
+        -d 50 \
+        --lookfrom 0,0,9 \
+        --lookat 0,0,0 \
+        --vup 0,1,0 \
+        --vfov 80 \
+        --defocus-angle 0 \
+        ./scenes/quads.json > image.ppm

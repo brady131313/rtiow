@@ -2,13 +2,11 @@ use std::{error::Error, io::BufWriter, path::PathBuf, sync::Arc};
 
 use argh::FromArgs;
 use rtiow::{
-    bvh::BVHNode,
     camera::Camera,
     color::Color,
-    hittable::HittableList,
+    hittable::{HittableList, bvh::BVHNode, quad::Quad, sphere::Sphere},
     material::{Dielectric, Lambertian, Metal},
     scene_loader::{SceneFile, load_scene},
-    sphere::Sphere,
     texture::{CheckerTexture, ImageTexture, NoiseTexture},
     vec::{Point3, Vec3},
 };
@@ -106,6 +104,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "checkered_spheres" => Ok(checkered_spheres()),
                 "earth" => earth(),
                 "perlin_spheres" => Ok(perlin_spheres()),
+                "quads" => Ok(quads()),
                 _ => Err(anyhow::anyhow!("invalid scene id: '{}'", args.scene)),
             }?;
 
@@ -251,6 +250,49 @@ fn perlin_spheres() -> HittableList {
         Point3::new(0.0, 2.0, 0.0),
         2.0,
         pertext_mat.clone(),
+    )));
+
+    world
+}
+
+fn quads() -> HittableList {
+    let mut world = HittableList::default();
+
+    let left_red = Arc::new(Lambertian::new("left_red", Color::new(1.0, 0.2, 0.2)));
+    let back_green = Arc::new(Lambertian::new("back_green", Color::new(0.2, 1.0, 0.2)));
+    let right_blue = Arc::new(Lambertian::new("right_blue", Color::new(0.2, 0.2, 1.0)));
+    let upper_orange = Arc::new(Lambertian::new("upper_orange", Color::new(1.0, 0.5, 0.0)));
+    let lower_teal = Arc::new(Lambertian::new("lower_teal", Color::new(0.2, 0.8, 0.8)));
+
+    world.add(Arc::new(Quad::new(
+        Point3::new(-3.0, -2.0, 5.0),
+        Vec3::new(0.0, 0.0, -4.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        left_red.clone(),
+    )));
+    world.add(Arc::new(Quad::new(
+        Point3::new(-2.0, -2.0, 0.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        back_green.clone(),
+    )));
+    world.add(Arc::new(Quad::new(
+        Point3::new(3.0, -2.0, 1.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        right_blue.clone(),
+    )));
+    world.add(Arc::new(Quad::new(
+        Point3::new(-2.0, 3.0, 1.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        upper_orange.clone(),
+    )));
+    world.add(Arc::new(Quad::new(
+        Point3::new(-2.0, -3.0, 5.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -4.0),
+        lower_teal.clone(),
     )));
 
     world

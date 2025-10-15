@@ -19,7 +19,7 @@ impl Interval {
         Self::new(min, max)
     }
 
-    pub fn size(&self) -> f64 {
+    pub const fn size(&self) -> f64 {
         self.max - self.min
     }
 
@@ -39,7 +39,7 @@ impl Interval {
         }
     }
 
-    pub fn expand(&self, delta: f64) -> Self {
+    pub const fn expand(&self, delta: f64) -> Self {
         let padding = delta / 2.0;
         Self::new(self.min - padding, self.max + padding)
     }
