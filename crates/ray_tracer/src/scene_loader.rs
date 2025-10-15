@@ -1,12 +1,5 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::BufReader,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -187,30 +180,26 @@ impl From<HittableList> for SceneFile {
     }
 }
 
-pub fn load_scene<P: AsRef<Path>>(path: P) -> anyhow::Result<HittableList> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
+impl SceneFile {
+    pub fn into_list(self) -> anyhow::Result<HittableList> {
+        let mut textures: HashMap<String, Arc<DynTexture>> = HashMap::new();
+        for (name, spec) in self.textures {
+            let texture = spec.build(&name, &textures)?;
+            textures.insert(name, texture);
+        }
 
-    let scene_file: SceneFile =
-        serde_json::from_reader(reader).context("Failed to load scene file")?;
+        let mut materials: HashMap<String, Arc<DynMaterial>> = HashMap::new();
+        for (name, spec) in self.materials {
+            let material = spec.build(&name, &textures);
+            materials.insert(name, material);
+        }
 
-    let mut textures: HashMap<String, Arc<DynTexture>> = HashMap::new();
-    for (name, spec) in scene_file.textures {
-        let texture = spec.build(&name, &textures)?;
-        textures.insert(name, texture);
+        let mut world = HittableList::default();
+        for shape_spec in self.shapes {
+            let hittable = shape_spec.build(&materials);
+            world.add(hittable);
+        }
+
+        Ok(world)
     }
-
-    let mut materials: HashMap<String, Arc<DynMaterial>> = HashMap::new();
-    for (name, spec) in scene_file.materials {
-        let material = spec.build(&name, &textures);
-        materials.insert(name, material);
-    }
-
-    let mut world = HittableList::default();
-    for shape_spec in scene_file.shapes {
-        let hittable = shape_spec.build(&materials);
-        world.add(hittable);
-    }
-
-    Ok(world)
 }

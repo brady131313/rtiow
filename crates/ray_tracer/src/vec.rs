@@ -26,12 +26,24 @@ impl Vec3 {
         self.0
     }
 
+    pub fn x_mut(&mut self) -> &mut f64 {
+        &mut self.0
+    }
+
     pub fn y(&self) -> f64 {
         self.1
     }
 
+    pub fn y_mut(&mut self) -> &mut f64 {
+        &mut self.1
+    }
+
     pub fn z(&self) -> f64 {
         self.2
+    }
+
+    pub fn z_mut(&mut self) -> &mut f64 {
+        &mut self.2
     }
 
     pub fn length(&self) -> f64 {

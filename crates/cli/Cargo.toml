@@ -1,0 +1,11 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+rand = { workspace = true }
+argh = { version = "0.1.13", default-features = false, features = ["help"] }
+serde_json = "1.0.145"
+ray_tracer = { path = "../ray_tracer" }

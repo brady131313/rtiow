@@ -1,12 +1,19 @@
+width := "768"
+samples := "100"
+max_depth := "50"
+
 dump SCENE:
-    cargo run --release -- dump \
+    cargo run --release --bin cli -- dump \
         {{SCENE}} > scenes/{{SCENE}}.json
 
+gui:
+    cargo run --bin gui
+
 render_cover:
-    cargo run --release -- render \
-        -w 768 \
-        -s 100 \
-        -d 50 \
+    cargo run --release --bin cli -- render \
+        -w {{width}} \
+        -s {{samples}} \
+        -d {{max_depth}} \
         --lookfrom 13,2,3 \
         --lookat 0,0,0 \
         --vup 0,1,0 \
@@ -15,10 +22,10 @@ render_cover:
         ./scenes/cover.json > image.ppm
 
 render_earth:
-    cargo run --release -- render \
-        -w 768 \
-        -s 100 \
-        -d 50 \
+    cargo run --release --bin cli -- render \
+        -w {{width}} \
+        -s {{samples}} \
+        -d {{max_depth}} \
         --lookfrom 0,0,12 \
         --lookat 0,0,0 \
         --vup 0,1,0 \
@@ -27,10 +34,10 @@ render_earth:
         ./scenes/earth.json > image.ppm
 
 render_perlin:
-    cargo run --release -- render \
-        -w 768 \
-        -s 100 \
-        -d 50 \
+    cargo run --release --bin cli -- render \
+        -w {{width}} \
+        -s {{samples}} \
+        -d {{max_depth}} \
         --lookfrom 13,2,3 \
         --lookat 0,0,0 \
         --vup 0,1,0 \
@@ -40,11 +47,11 @@ render_perlin:
 
 
 render_quads:
-    cargo run --release -- render \
-        -w 768 \
+    cargo run --release --bin cli -- render \
         -r 1.0 \
-        -s 100 \
-        -d 50 \
+        -w {{width}} \
+        -s {{samples}} \
+        -d {{max_depth}} \
         --lookfrom 0,0,9 \
         --lookat 0,0,0 \
         --vup 0,1,0 \

@@ -13,14 +13,10 @@
       }
     ],
     [
-      "back_green",
+      "image_\"textures/earthmap.jpg\"",
       {
-        "SolidColor": {
-          "albedo": [
-            0.2,
-            1.0,
-            0.2
-          ]
+        "Image": {
+          "path": "textures/earthmap.jpg"
         }
       }
     ],
@@ -71,10 +67,10 @@
       }
     ],
     [
-      "back_green",
+      "image_\"textures/earthmap.jpg\"",
       {
         "Lambertian": {
-          "texture": "back_green"
+          "texture": "image_\"textures/earthmap.jpg\""
         }
       }
     ],
@@ -129,7 +125,7 @@
         "q": [
           -2.0,
           -2.0,
-          0.0
+          -0.5
         ],
         "u": [
           4.0,
@@ -141,7 +137,7 @@
           4.0,
           0.0
         ],
-        "material": "back_green"
+        "material": "image_\"textures/earthmap.jpg\""
       }
     },
     {

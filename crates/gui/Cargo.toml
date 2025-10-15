@@ -1,0 +1,11 @@
+[package]
+name = "gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.33.0"
+ray_tracer = { path = "../ray_tracer" }
+anyhow = { workspace = true }
+env_logger = "0.11.8"
+egui_extras = { version = "0.33.0", features = ["default", "image"] }

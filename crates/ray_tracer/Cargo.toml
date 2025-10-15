@@ -1,0 +1,12 @@
+[package]
+name = "ray_tracer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+indicatif = { version = "0.18.0", features = ["rayon"] }
+rand = { workspace = true }
+rayon = "1.11.0"
+serde = { version = "1.0.228", features = ["derive"] }
+image = "0.25.8"

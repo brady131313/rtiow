@@ -1,12 +1,19 @@
-use std::{error::Error, io::BufWriter, path::PathBuf, sync::Arc};
+use std::{
+    error::Error,
+    fs::File,
+    io::{BufReader, BufWriter},
+    path::PathBuf,
+    sync::Arc,
+};
 
+use anyhow::Context;
 use argh::FromArgs;
-use rtiow::{
+use ray_tracer::{
     camera::Camera,
     color::Color,
     hittable::{HittableList, bvh::BVHNode, quad::Quad, sphere::Sphere},
     material::{Dielectric, Lambertian, Metal},
-    scene_loader::{SceneFile, load_scene},
+    scene_loader::SceneFile,
     texture::{CheckerTexture, ImageTexture, NoiseTexture},
     vec::{Point3, Vec3},
 };
@@ -78,7 +85,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args.command {
         SubCommand::Render(args) => {
-            let world = load_scene(args.scene_path)?;
+            let file = File::open(args.scene_path)?;
+            let reader = BufReader::new(file);
+            let scene: SceneFile =
+                serde_json::from_reader(reader).context("Failed to load scene file")?;
+
+            let world = scene.into_list()?;
 
             let camera = Camera::builder()
                 .image_width(args.image_width)
@@ -104,7 +116,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "checkered_spheres" => Ok(checkered_spheres()),
                 "earth" => earth(),
                 "perlin_spheres" => Ok(perlin_spheres()),
-                "quads" => Ok(quads()),
+                "quads" => quads(),
                 _ => Err(anyhow::anyhow!("invalid scene id: '{}'", args.scene)),
             }?;
 
@@ -255,8 +267,11 @@ fn perlin_spheres() -> HittableList {
     world
 }
 
-fn quads() -> HittableList {
+fn quads() -> anyhow::Result<HittableList> {
     let mut world = HittableList::default();
+
+    let earth_texture = Arc::new(ImageTexture::new("textures/earthmap.jpg")?);
+    let earth_surface = Arc::new(Lambertian::from_texture(earth_texture));
 
     let left_red = Arc::new(Lambertian::new("left_red", Color::new(1.0, 0.2, 0.2)));
     let back_green = Arc::new(Lambertian::new("back_green", Color::new(0.2, 1.0, 0.2)));
@@ -274,7 +289,7 @@ fn quads() -> HittableList {
         Point3::new(-2.0, -2.0, 0.0),
         Vec3::new(4.0, 0.0, 0.0),
         Vec3::new(0.0, 4.0, 0.0),
-        back_green.clone(),
+        earth_surface.clone(),
     )));
     world.add(Arc::new(Quad::new(
         Point3::new(3.0, -2.0, 1.0),
@@ -295,5 +310,5 @@ fn quads() -> HittableList {
         lower_teal.clone(),
     )));
 
-    world
+    Ok(world)
 }
