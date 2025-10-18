@@ -97,6 +97,8 @@ struct RtiowApp {
     image_bytes: Option<Arc<[u8]>>,
 }
 
+const IMAGE_URI: &str = "bytes://rendered.ppm";
+
 impl RtiowApp {
     pub fn new() -> Self {
         let (job_tx, job_rx) = channel::<JobRequest>();
@@ -115,7 +117,9 @@ impl RtiowApp {
                 }
 
                 let image = render_scene(&job.params, &world);
-                let _ = result_tx.send(JobResult { id: job.id, image });
+                if let Err(e) = result_tx.send(JobResult { id: job.id, image }) {
+                    error!("render thread closed: {e}")
+                }
             }
         });
 
@@ -210,7 +214,7 @@ impl RtiowApp {
     fn render_panel(&mut self, ui: &mut eframe::egui::Ui) {
         if let Some(image) = &self.image_bytes {
             ui.image(ImageSource::Bytes {
-                uri: "bytes://rendered.ppm".into(),
+                uri: IMAGE_URI.into(),
                 bytes: image.clone().into(),
             });
         }
@@ -221,6 +225,7 @@ impl eframe::App for RtiowApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         while let Ok(result) = self.result_rx.try_recv() {
             if Some(result.id) >= self.newest_requested_job {
+                ctx.forget_image(IMAGE_URI);
                 self.image_bytes = Some(result.image);
                 self.newest_finished_job = Some(result.id);
                 ctx.request_repaint();
