@@ -3,6 +3,7 @@ use std::{
     io::BufReader,
     sync::{
         Arc,
+        atomic::{AtomicUsize, Ordering},
         mpsc::{Receiver, Sender, channel},
     },
 };
@@ -10,7 +11,7 @@ use std::{
 use eframe::egui::{self, ImageSource};
 use log::error;
 use ray_tracer::{
-    camera::Camera,
+    camera::{Camera, PPMRenderWriter, RenderProgressTracker},
     hittable::HittableList,
     scene_loader::SceneFile,
     vec::{Point3, Vec3},
@@ -86,13 +87,45 @@ impl Default for RenderJob {
     }
 }
 
+struct RenderProgressState {
+    total: AtomicUsize,
+    current: AtomicUsize,
+}
+
+impl RenderProgressState {
+    pub fn new() -> Self {
+        Self {
+            total: AtomicUsize::new(0),
+            current: AtomicUsize::new(0),
+        }
+    }
+
+    pub fn progress(&self) -> f32 {
+        let total = self.total.load(Ordering::Relaxed);
+        let current = self.current.load(Ordering::Relaxed);
+
+        current as f32 / total as f32
+    }
+}
+
+impl RenderProgressTracker for RenderProgressState {
+    fn init(&self, total: usize) {
+        self.total.swap(total, Ordering::Relaxed);
+    }
+
+    fn tick(&self, _current: usize) {
+        self.current.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
 struct RtiowApp {
     job_params: RenderJob,
     last_sent_params: RenderJob,
+    render_progress: Option<Arc<RenderProgressState>>,
     next_job_id: JobId,
     newest_requested_job: Option<JobId>,
     newest_finished_job: Option<JobId>,
-    job_tx: Sender<JobRequest>,
+    job_tx: Sender<(JobRequest, Arc<RenderProgressState>)>,
     result_rx: Receiver<JobResult>,
     image_bytes: Option<Arc<[u8]>>,
 }
@@ -101,10 +134,10 @@ const IMAGE_URI: &str = "bytes://rendered.ppm";
 
 impl RtiowApp {
     pub fn new() -> Self {
-        let (job_tx, job_rx) = channel::<JobRequest>();
+        let (job_tx, job_rx) = channel::<(JobRequest, Arc<RenderProgressState>)>();
         let (result_tx, result_rx) = channel::<JobResult>();
 
-        let file = File::open("scenes/earth.json").unwrap();
+        let file = File::open("scenes/cover.json").unwrap();
         let reader = BufReader::new(file);
         let scene: SceneFile = serde_json::from_reader(reader).unwrap();
         let world = scene.into_list().unwrap();
@@ -116,8 +149,13 @@ impl RtiowApp {
                     job = next;
                 }
 
-                let image = render_scene(&job.params, &world);
-                if let Err(e) = result_tx.send(JobResult { id: job.id, image }) {
+                let (request, progress) = job;
+                let image = render_scene(&request.params, &world, progress);
+
+                if let Err(e) = result_tx.send(JobResult {
+                    id: request.id,
+                    image,
+                }) {
                     error!("render thread closed: {e}")
                 }
             }
@@ -126,6 +164,7 @@ impl RtiowApp {
         Self {
             job_params: RenderJob::default(),
             last_sent_params: RenderJob::default(),
+            render_progress: None,
             next_job_id: JobId(0),
             newest_requested_job: None,
             newest_finished_job: None,
@@ -209,6 +248,12 @@ impl RtiowApp {
             )
             .labelled_by(label.id);
         });
+
+        ui.separator();
+
+        if let Some(progress) = &self.render_progress {
+            ui.add(egui::ProgressBar::new(progress.progress()));
+        }
     }
 
     fn render_panel(&mut self, ui: &mut eframe::egui::Ui) {
@@ -225,6 +270,8 @@ impl eframe::App for RtiowApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         while let Ok(result) = self.result_rx.try_recv() {
             if Some(result.id) >= self.newest_requested_job {
+                self.render_progress = None;
+
                 ctx.forget_image(IMAGE_URI);
                 self.image_bytes = Some(result.image);
                 self.newest_finished_job = Some(result.id);
@@ -243,12 +290,18 @@ impl eframe::App for RtiowApp {
             self.last_sent_params = self.job_params.clone();
             self.newest_requested_job = Some(job_id);
 
+            let progress = Arc::new(RenderProgressState::new());
+            self.render_progress = Some(progress.clone());
+
             if self
                 .job_tx
-                .send(JobRequest {
-                    id: job_id,
-                    params: self.job_params.clone(),
-                })
+                .send((
+                    JobRequest {
+                        id: job_id,
+                        params: self.job_params.clone(),
+                    },
+                    progress,
+                ))
                 .is_ok()
             {
                 ctx.request_repaint();
@@ -266,9 +319,11 @@ impl eframe::App for RtiowApp {
     }
 }
 
-fn render_scene(params: &RenderJob, world: &HittableList) -> Arc<[u8]> {
-    dbg!(params);
-
+fn render_scene(
+    params: &RenderJob,
+    world: &HittableList,
+    progress_tracker: Arc<RenderProgressState>,
+) -> Arc<[u8]> {
     let camera = Camera::builder()
         .image_width(params.image_width)
         .aspect_ratio(params.aspect_ratio)
@@ -282,12 +337,13 @@ fn render_scene(params: &RenderJob, world: &HittableList) -> Arc<[u8]> {
         .focus_dist(params.focus_dist)
         .build();
 
-    let mut out: Vec<u8> = Vec::new();
-    if let Err(e) = camera.render(world, &mut out) {
+    let out: Vec<u8> = Vec::new();
+    let mut out = PPMRenderWriter::new(out);
+    if let Err(e) = camera.render(world, &mut out, progress_tracker.as_ref()) {
         error!("render error: {e}")
     };
 
-    out.into_boxed_slice().into()
+    out.take().into_boxed_slice().into()
 }
 
 fn vector_input(ui: &mut eframe::egui::Ui, label: &str, vec: &mut Vec3) {

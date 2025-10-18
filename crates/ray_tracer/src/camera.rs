@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use rand::Rng;
 
 use crate::{
@@ -163,10 +162,6 @@ pub struct Camera {
     pixel_delta_u: Vec3,
     pixel_delta_v: Vec3,
     max_depth: i32,
-    // /// Camera frame basis vectors
-    // u: Vec3,
-    // v: Vec3,
-    // w: Vec3,
     defocus_angle: f64,
     /// defocus disk horizontal radius
     defocus_disk_u: Vec3,
@@ -179,20 +174,24 @@ impl Camera {
         CameraBuilder::default()
     }
 
-    pub fn render<W: Write>(&self, world: &HittableList, out: &mut W) -> std::io::Result<()> {
+    pub fn render<W, R>(
+        &self,
+        world: &HittableList,
+        out: &mut W,
+        progress: &R,
+    ) -> Result<(), W::Error>
+    where
+        W: RenderWriter,
+        R: RenderProgressTracker + Send + Sync,
+    {
         use rayon::prelude::*;
 
-        let pb = ProgressBar::new(self.image_height as u64);
-        pb.set_style(ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}")
-            .unwrap()
-    );
+        progress.init(self.image_height as usize);
 
         let pixels: Vec<_> = (0..self.image_height)
             .into_par_iter()
-            .progress_with(pb.clone())
             .flat_map_iter(|j| {
-                (0..self.image_width).map(move |i| {
+                let row = (0..self.image_width).map(move |i| {
                     let mut pixel_color = Color::ZERO;
                     for _sample in 0..self.samples_per_pixel {
                         let r = self.get_ray(i, j);
@@ -200,17 +199,22 @@ impl Camera {
                     }
 
                     pixel_color * self.pixel_samples_scale
-                })
+                });
+
+                progress.tick(j as usize);
+
+                row
             })
             .collect();
 
-        writeln!(out, "P3\n{} {}\n255", self.image_width, self.image_height)?;
+        out.init(self.image_height, self.image_width)?;
 
-        for pixel in pixels {
-            pixel.write_color(out)?;
+        for j in 0..self.image_height {
+            for i in 0..self.image_width {
+                let pixel = &pixels[(j * self.image_width + i) as usize];
+                out.write_px(i, j, pixel)?;
+            }
         }
-
-        pb.finish_with_message("Rendering complete");
 
         Ok(())
     }
@@ -266,4 +270,51 @@ impl Camera {
 fn sample_square() -> Vec3 {
     let mut rand = rand::rng();
     Vec3::new(rand.random::<f64>() - 0.5, rand.random::<f64>() - 0.5, 0.0)
+}
+
+pub trait RenderWriter {
+    type Error;
+
+    fn init(&mut self, image_height: i32, image_width: i32) -> Result<(), Self::Error>;
+
+    fn write_px(&mut self, i: i32, j: i32, px: &Color) -> Result<(), Self::Error>;
+}
+
+pub struct PPMRenderWriter<W>(W);
+
+impl<W> PPMRenderWriter<W> {
+    pub fn new(writer: W) -> Self {
+        Self(writer)
+    }
+
+    pub fn take(self) -> W {
+        self.0
+    }
+}
+
+impl<W: Write> RenderWriter for PPMRenderWriter<W> {
+    type Error = std::io::Error;
+
+    fn init(&mut self, image_height: i32, image_width: i32) -> Result<(), Self::Error> {
+        writeln!(self.0, "P3\n{image_width} {image_height}\n255")?;
+        Ok(())
+    }
+
+    fn write_px(&mut self, _i: i32, _j: i32, px: &Color) -> Result<(), Self::Error> {
+        px.write_color(&mut self.0)
+    }
+}
+
+pub trait RenderProgressTracker {
+    fn init(&self, total: usize);
+
+    fn tick(&self, current: usize);
+}
+
+pub struct NoopProgressTracker;
+
+impl RenderProgressTracker for NoopProgressTracker {
+    fn init(&self, _total: usize) {}
+
+    fn tick(&self, _current: usize) {}
 }

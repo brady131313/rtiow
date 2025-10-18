@@ -3,13 +3,15 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter},
     path::PathBuf,
+    str::FromStr,
     sync::Arc,
 };
 
 use anyhow::Context;
 use argh::FromArgs;
+use indicatif::{ProgressBar, ProgressStyle};
 use ray_tracer::{
-    camera::Camera,
+    camera::{Camera, PPMRenderWriter, RenderProgressTracker},
     color::Color,
     hittable::{HittableList, bvh::BVHNode, quad::Quad, sphere::Sphere},
     material::{Dielectric, Lambertian, Metal},
@@ -66,6 +68,13 @@ struct RenderSceneArgs {
     #[argh(option, default = "10.0")]
     /// distance from camera lookfrom point to plane of perfect focus
     focus_dist: f64,
+    #[argh(
+        option,
+        short = 'o',
+        default = "PathBuf::from_str(\"image.ppm\").unwrap()"
+    )]
+    /// output file
+    output_path: PathBuf,
     #[argh(positional)]
     /// the scene file to render
     scene_path: PathBuf,
@@ -105,10 +114,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .focus_dist(args.focus_dist)
                 .build();
 
-            let stdout = std::io::stdout();
-            let mut writer = BufWriter::new(stdout.lock());
+            let output = File::create(args.output_path)?;
+            let writer = BufWriter::new(output);
+            let mut writer = PPMRenderWriter::new(writer);
 
-            camera.render(&world, &mut writer).unwrap();
+            let pb = ProgressBar::no_length();
+            pb.set_style(ProgressStyle::default_bar()
+                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}")
+                .unwrap()
+            );
+
+            let mut pb = IndicatifProgressTracker(pb);
+
+            camera.render(&world, &mut writer, &mut pb).unwrap();
+
+            pb.0.finish_with_message("Rendering complete");
         }
         SubCommand::Dump(args) => {
             let world = match args.scene.as_str() {
@@ -130,6 +150,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+struct IndicatifProgressTracker(ProgressBar);
+
+impl RenderProgressTracker for IndicatifProgressTracker {
+    fn init(&self, total: usize) {
+        self.0.set_length(total as u64);
+    }
+
+    fn tick(&self, _current: usize) {
+        self.0.inc(1);
+    }
 }
 
 fn book_cover() -> HittableList {

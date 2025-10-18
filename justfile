@@ -19,7 +19,7 @@ render_cover:
         --vup 0,1,0 \
         --vfov 20 \
         --defocus-angle 0 \
-        ./scenes/cover.json > image.ppm
+        ./scenes/cover.json 
 
 render_earth:
     cargo run --release --bin cli -- render \
@@ -31,7 +31,7 @@ render_earth:
         --vup 0,1,0 \
         --vfov 20 \
         --defocus-angle 0 \
-        ./scenes/earth.json > image.ppm
+        ./scenes/earth.json
 
 render_perlin:
     cargo run --release --bin cli -- render \
@@ -43,7 +43,7 @@ render_perlin:
         --vup 0,1,0 \
         --vfov 20 \
         --defocus-angle 0 \
-        ./scenes/perlin_spheres.json > image.ppm
+        ./scenes/perlin_spheres.json 
 
 
 render_quads:
@@ -57,4 +57,4 @@ render_quads:
         --vup 0,1,0 \
         --vfov 80 \
         --defocus-angle 0 \
-        ./scenes/quads.json > image.ppm
+        ./scenes/quads.json
